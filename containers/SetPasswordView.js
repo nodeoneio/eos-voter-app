@@ -23,7 +23,7 @@ import { NavigationActions, StackActions, SafeAreaView } from 'react-navigation'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 import Indicator, * as IndicatorIcon from '../components/Indicator'
 
-console.disableYellowBox = true;
+
 process.env.NODE_ENV = 'production'
 
 var {height, width} = Dimensions.get('window');
@@ -32,11 +32,6 @@ export default class SetPassword extends React.Component {
 
   static navigationOptions = {
     header: null,
-  }
-
-  static propTypes = {
-    onComplete: PropTypes.func,
-    completion_type: PropTypes.string,
   }
 
   state = {
@@ -248,6 +243,11 @@ export default class SetPassword extends React.Component {
       </SafeAreaView>
     );
   }
+}
+
+SetPassword.propTypes = {
+  onComplete: PropTypes.func,
+  completion_type: PropTypes.string
 }
 
 const styles = StyleSheet.create({

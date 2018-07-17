@@ -24,7 +24,7 @@ export function getAccount(account = '') {
     console.log(getState(), 'getState')
     if (account) {//&& (settings.node || settings.node.length !== 0)
       console.log(Api, 'Api')
-      api.request(Api.GET_ACCOUNT, {account}).then((results) => {
+      api.request(connection, Api.GET_ACCOUNT, {account}).then((results) => {
         // Dispatch the results of the account itself
         return dispatch({
           type: types.GET_ACCOUNT_SUCCESS,
@@ -55,7 +55,7 @@ export function getAccountByKey(public_key) {
       api
     } = getState();
     if (public_key) {// && (settings.node || settings.node.length !== 0)
-      return api.request(Api.GET_KEY_ACCOUNTS, {public_key}).then((accounts) => dispatch({
+      return api.request(connection, Api.GET_KEY_ACCOUNTS, {public_key}).then((accounts) => dispatch({
         type: types.GET_ACCOUNT_BY_KEY_SUCCESS,
         payload: { accounts }
       })).catch((err) => dispatch({

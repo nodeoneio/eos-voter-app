@@ -28,7 +28,7 @@ export function getProducers(previous = false) {
     if (previous) {
       query.lower_bound = previous[previous.length - 1].owner;
     }
-    api.request(Api.GET_TABLE_ROWS, {query}).then((results) => {
+    api.request(connection, Api.GET_TABLE_ROWS, {query}).then((results) => {
       let { rows } = results;
       // If previous rows were returned
       if (previous) {

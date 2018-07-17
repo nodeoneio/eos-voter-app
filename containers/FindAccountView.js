@@ -26,7 +26,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import * as AccountActions from '../actions/accounts'
 import * as SettingsActions from '../actions/settings'
 
-console.disableYellowBox = true;
+
 process.env.NODE_ENV = 'production'
 
 var {height, width} = Dimensions.get('window');
@@ -42,10 +42,6 @@ class FindAccountView extends React.Component {
 
   static navigationOptions = {
     header: null,
-  }
-
-  static propTypes = {
-    completion_type: PropTypes.string
   }
 
   state = {
@@ -423,6 +419,10 @@ function mapDispatchToProps(dispatch) {
       ...SettingsActions
     }, dispatch)
   };
+}
+
+FindAccountView.propTypes = {
+  completion_type: PropTypes.string
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(FindAccountView)

@@ -16,7 +16,7 @@ export function getGlobals() {
       scope: 'eosio',
       table: 'global'
     };
-    api.request(Api.GET_TABLE_ROWS, {query}).then((results) => dispatch({
+    api.request(connection, Api.GET_TABLE_ROWS, {query}).then((results) => dispatch({
       type: types.GET_GLOBALS_SUCCESS,
       payload: { results }
     })).catch((err) => dispatch({
@@ -34,7 +34,7 @@ export function getCurrencyStats(contractName = "eosio.token", symbolName = "EOS
       type: types.GET_CURRENCYSTATS_REQUEST
     });
     const { connection } = getState();
-    api.request(Api.GET_CURRENCY_STATES, {account, symbol}).then((results) => {
+    api.request(connection, Api.GET_CURRENCY_STATES, {account, symbol}).then((results) => {
       if (isEmpty(results)) {
         return dispatch({
           type: types.GET_CURRENCYSTATS_FAILURE,

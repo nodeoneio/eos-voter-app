@@ -20,7 +20,7 @@ import PropTypes from 'prop-types'
 import { SafeAreaView } from 'react-navigation'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
-console.disableYellowBox = true;
+
 process.env.NODE_ENV = 'production'
 
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906'
@@ -39,11 +39,6 @@ const ICON_INVALID = "icon_invalid"
 export default class SelectNetwork extends React.Component {
   static navigationOptions = {
     header: null,
-  }
-
-  static propTypes = {
-    completion_type: PropTypes.string,
-    network: PropTypes.string
   }
 
   state = {
@@ -287,6 +282,11 @@ export default class SelectNetwork extends React.Component {
       </SafeAreaView>
     );
   }
+}
+
+SelectNetwork.propTypes = {
+  completion_type: PropTypes.string,
+  network: PropTypes.string
 }
 
 const styles = StyleSheet.create({

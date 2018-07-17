@@ -20,7 +20,7 @@ import PropTypes from 'prop-types'
 import { SafeAreaView } from 'react-navigation'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
-console.disableYellowBox = true;
+
 process.env.NODE_ENV = 'production'
 
 const __networks = [
@@ -40,11 +40,6 @@ export default class UnlockWallet extends React.Component {
 
   static navigationOptions = {
     header: null,
-  }
-
-  static propTypes = {
-    onComplete: PropTypes.func,
-    completion_type: PropTypes.string
   }
 
   state = {
@@ -144,6 +139,11 @@ export default class UnlockWallet extends React.Component {
       </SafeAreaView>
     );
   }
+}
+
+UnlockWallet.propTypes = {
+  onComplete: PropTypes.func,
+  completion_type: PropTypes.string
 }
 
 const styles = StyleSheet.create({

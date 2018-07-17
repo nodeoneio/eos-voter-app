@@ -19,7 +19,7 @@ export function validateAccount(account) {
     } = getState();
     try {
       // A generic info call to make sure it's working
-      api.request(Api.GET_ACCOUNT, {account}).then((results) => {
+      api.request(connection, Api.GET_ACCOUNT, {account}).then((results) => {
         // PATCH - Force in self_delegated_bandwidth if it doesn't exist
         const modified = results;
         if (!modified.self_delegated_bandwidth) {
@@ -123,12 +123,12 @@ export function validateKey(key) {
     }
     try {
       // Establish EOS connection
-      api.request(Api.GET_ACCOUNT, {account: settings.account}).then((account) => {
+      api.request(connection, Api.GET_ACCOUNT, {account: settings.account}).then((account) => {
         // Keys must resolve to one of these types of permissions
         const permissions = ['active', 'owner'];
         try {
           // Derive the public key from the private key provided
-          api.request(Api.PRIVATE_TO_PUBLIC, {key})
+          api.request(connection, Api.PRIVATE_TO_PUBLIC, {key})
           .then((expect) => {
             // Filter the account's permissions to find any valid matches
             const validPermissions = account.permissions.filter((perm) => {

@@ -6,10 +6,6 @@ import Icon from 'react-native-vector-icons/Feather'
 
 export default class EVWebView extends React.Component {
 
-  static propTypes = {
-    url: PropTypes.string
-  }
-
   state = {
     url: this.props.navigation.getParam('url', '')
   }
@@ -50,4 +46,8 @@ export default class EVWebView extends React.Component {
       </SafeAreaView>
     )
   }
+}
+
+EVWebView.propTypes = {
+  url: PropTypes.string
 }

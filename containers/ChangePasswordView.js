@@ -22,7 +22,7 @@ import PropTypes from 'prop-types'
 import { SafeAreaView } from 'react-navigation'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
-console.disableYellowBox = true;
+
 process.env.NODE_ENV = 'production'
 
 var {height, width} = Dimensions.get('window');
@@ -31,12 +31,6 @@ export default class ChangePassword extends React.Component {
 
   static navigationOptions = {
     header: null,
-  }
-
-  static propTypes = {
-    onComplete: PropTypes.func,
-    completion_type: PropTypes.string,
-    network: PropTypes.string
   }
 
   state = {
@@ -164,6 +158,12 @@ export default class ChangePassword extends React.Component {
       </SafeAreaView>
     );
   }
+}
+
+ChangePassword.propTypes = {
+  onComplete: PropTypes.func,
+  completion_type: PropTypes.string,
+  network: PropTypes.string
 }
 
 const styles = StyleSheet.create({

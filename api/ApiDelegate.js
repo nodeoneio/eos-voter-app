@@ -4,16 +4,18 @@ import _ from 'lodash'
 const WAITING = 1
 const REQUESTED = 2
 
-const config = {
-  chainId: "aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906",
-  httpEndpoint: "https://api.main-net.eosnodeone.io",
-  expireInSeconds: 60
-}
+// const config = {
+//   chainId: "aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906",
+//   httpEndpoint: "https://api.main-net.eosnodeone.io",
+//   expireInSeconds: 60
+// }
 
 export const GET_KEY_ACCOUNTS = 'getKeyAccounts'
 export const GET_ACCOUNT = 'getAccount'
 export const STAKE = 'stake'
 export const VOTE_PRODUCERS = 'voteproducers'
+export const DELEGATEBW = 'delegatebw'
+export const UNDELEGATEBW = 'undelegatebw'
 export const GET_BLOCK = 'getBlock'
 export const GET_TABLE_ROWS = 'getTableRows'
 export const GET_CURRENCY_STATES = 'getCurrencyStats'
@@ -29,6 +31,8 @@ const __apiRequests = {
   [GET_ACCOUNT]: {},
   [STAKE]: {},
   [VOTE_PRODUCERS]: {},
+  [DELEGATEBW]: {},
+  [UNDELEGATEBW]: {},
   [GET_BLOCK]: {},
   [GET_TABLE_ROWS]: {},
   [GET_CURRENCY_STATES]: {},
@@ -75,7 +79,7 @@ export default class ApiDelegate {
     return true
   }
 
-  _executeRequest(api, requestId) {
+  _executeRequest(config, api, requestId) {
     let requests = __apiRequests[api]
     let req = requests[requestId] // requests[0]
     var script = ""
@@ -96,7 +100,44 @@ export default class ApiDelegate {
         script = `getAccount("${req.requestId}", ${JSON.stringify(config)}, "${account}");`
       }
       break
-      case STAKE:
+      case VOTE_PRODUCERS: {
+        // Check Parameters
+        if (!this._validateParams(api, ['account','producers'], req, requests)) return
+
+        var account = req.options.account
+        var producers = JSON.stringify(req.options.producers)
+        script = `voteproducers("${req.requestId}", ${JSON.stringify(config)}, "${account}", ${producers});`
+      }
+      break
+      case DELEGATEBW: {
+        // Check Parameters
+        if (!this._validateParams(api, ['delegater', 'receiver', 'netAmount', 'cpuAmount'], req, requests)) return
+
+        const {
+          delegater,
+          receiver,
+          netAmount,
+          cpuAmount
+        } = req.options
+
+        var account = req.options.account
+        script = `delegatebw("${req.requestId}", ${JSON.stringify(config)}, "${delegater}", "${receiver}", "${netAmount}", "${cpuAmount}");`
+      }
+      break
+      case UNDELEGATEBW: {
+        // Check Parameters
+        if (!this._validateParams(api, ['delegater', 'receiver', 'netAmount', 'cpuAmount'], req, requests)) return
+
+        const {
+          delegater,
+          receiver,
+          netAmount,
+          cpuAmount
+        } = req.options
+
+        var account = req.options.account
+        script = `undelegatebw("${req.requestId}", ${JSON.stringify(config)}, "${delegater}", "${receiver}", "${netAmount}", "${cpuAmount}");`
+      }
       break
       case GET_BLOCK: {
         // Check Parameters
@@ -158,7 +199,7 @@ export default class ApiDelegate {
    * @param Object options
    * @param fn     callback
    */
-  request(key, options, callback) {
+  request(config, key, options, callback) {
     const uid = guid()
 
     var resolve = null
@@ -179,7 +220,7 @@ export default class ApiDelegate {
 
     __apiRequests[key][uid] = request
 
-    this._executeRequest(key, uid)
+    this._executeRequest(config, key, uid)
 
     return promise
   }
@@ -209,6 +250,9 @@ export default class ApiDelegate {
       case "handlePrivateToPublic":
       case "handleGetTableRows":
       case "handleGetCurrencyStates":
+      case "handleVoteproducers":
+      case "handleDelegatebw":
+      case "handleUndelegatebw":
           this[msgData.targetFunc].apply(this, [msgData]);
           break
     }
@@ -217,12 +261,12 @@ export default class ApiDelegate {
   /* Handle WebView Messages */
 
   _fireCallback(res, api) {
-    console.log(res, '_fireCallback res')
     if (res) {
+      console.log(res, `${api} res`)
       let requests = __apiRequests[api]
       const req = _.find(requests, {state: REQUESTED})
-      console.log(requests, "requests")
-      console.log(req, "req")
+      // console.log(requests, "requests")
+      // console.log(req, "req")
       const data = res.data
       if (req.callback)
         req.callback(data.error, data.result) // Callback
@@ -233,8 +277,6 @@ export default class ApiDelegate {
 
       delete requests[req.requestId]
     }
-
-    console.log(__apiRequests, '__apiRequests')
   }
 
   handleGetKeyAccounts(res) {
@@ -258,12 +300,23 @@ export default class ApiDelegate {
   }
 
   handleGetTableRows(res) {
-    console.log(res, 'handleGetTableRows res')
     this._fireCallback(res, GET_TABLE_ROWS)
   }
 
   handleGetCurrencyStates(res) {
     this._fireCallback(res, GET_CURRENCY_STATES)
+  }
+
+  handleVoteproducers(res) {
+    this._fireCallback(res, VOTE_PRODUCERS)
+  }
+
+  handleDelegatebw(res) {
+    this._fireCallback(res, DELEGATEBW)
+  }
+
+  handleUndelegatebw(res) {
+    this._fireCallback(res, UNDELEGATEBW)
   }
 
 }

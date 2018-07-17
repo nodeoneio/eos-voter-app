@@ -1374,7 +1374,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.monospace.eosvoterapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.monospace.eosvoterapp1;
 				PRODUCT_NAME = eosvoterapp;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -1398,7 +1398,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.monospace.eosvoterapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.monospace.eosvoterapp1;
 				PRODUCT_NAME = eosvoterapp;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

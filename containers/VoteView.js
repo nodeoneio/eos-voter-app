@@ -25,36 +25,48 @@ import OnLayout from 'react-native-on-layout'
 import Dimensions from 'Dimensions'
 import { NavigationActions, StackActions, SafeAreaView } from 'react-navigation'
 import Indicator, * as IndicatorIcon from '../components/Indicator'
+import Confirm from '../components/Confirm'
 import * as consts from '../common/constants'
 import * as AccountActions from '../actions/accounts'
 import * as SettingsActions from '../actions/settings'
 import * as ProducersActions from '../actions/producers'
 import * as GlobalsActions from '../actions/globals'
+import * as VoteproducerActions from '../actions/system/voteproducers'
 
-console.disableYellowBox = true;
+
 process.env.NODE_ENV = 'production'
 
 const ICON_LOADING = "icon_loading"
 const ICON_VALID = "icon_valid"
 const ICON_INVALID = "icon_invalid"
 
+const MAX_SELECT = 30
+
+const numberWithCommas = (x) => {
+  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 class VoteView extends React.Component {
   static navigationOptions = {
     header: null,
   }
 
-  static propTypes = {
-
-  }
-
   state = {
+    old_selected: [],
     selected_bpcs: [],
+    changed: false,
     bpcs: [],
     custom_url: null,
     show_indicator: false,
     indicator: {},
-    producers: {}
+    producers: {},
+    system: {},
+    submitting: false,
+    lastError: false,
+    lastTransaction: {}
   }
+
+  _interval = null
 
   constructor(props) {
     super(props)
@@ -62,44 +74,146 @@ class VoteView extends React.Component {
   }
 
   componentDidMount() {
+    const {
+      actions,
+      settings
+    } = this.props
 
+    // setTimeout(()=>{
+    //
+    //   this._loadData()
+    // }, 1500)
+
+    this._interval = setInterval(() => {
+      this._loadData()
+    }, 5000)
   }
 
   componentWillReceiveProps(newProps) {
     const {
-      producers
+      selected_bpcs,
+      changed
+    } = this.state
+    const {
+      producers,
+      system
     } = newProps
-    if (producers) {
-      this.setState({producers})
+    if (producers && producers.list && producers.list.length > 0) {
+      this.setState({
+        producers,
+        old_selected: producers.selected,
+        ...(!changed ? {selected_bpcs: producers.selected} : undefined)
+      })
     }
     console.log(producers, 'producers')
-  }
 
-  _onPressBpcsItem(bpc) {
-    let selected_bpcs = this.state.selected_bpcs
-    const idx = selected_bpcs.indexOf(bpc)
-    selected_bpcs = Object.assign([], selected_bpcs)
-    if (idx > -1) {
-      selected_bpcs.splice(idx, 1)
-    } else {
-      selected_bpcs.push(bpc)
+    if (
+      this.state.submitting
+      && (
+        this.state.lastTransaction !== system.VOTEPRODUCER_LAST_TRANSACTION
+        || this.state.lastError !== system.VOTEPRODUCER_LAST_ERROR
+      )
+    ) {
+      this.setState({
+        lastError: system.VOTEPRODUCER_LAST_ERROR,
+        lastTransaction: system.VOTEPRODUCER_LAST_TRANSACTION,
+        submitting: false
+      });
+
+      const last = system.VOTEPRODUCER_LAST_TRANSACTION
+      if (last && last.transaction_id) {
+        this._showCompleteIndicator()
+      } else {
+        this._showSubmitFailIndicator()
+      }
     }
-
-    this.setState({selected_bpcs})
-    console.log(selected_bpcs, "selected_bpcs")
   }
 
-  _onPressVote() {
+  componentWillUnmount() {
+    if (this._interval)
+      clearInterval(this._interval)
+  }
+
+  _isSelectChanged(a = [], b = []) {
+    const eq = _.isEqual(a.sort(), b.sort())
+    return !eq
+  }
+
+  _loadData() {
+    const {
+      actions,
+      settings
+    } = this.props
+    const {
+      getProducers,
+      getGlobals,
+      getAccount
+    } = actions
+    getAccount(settings.account)
+    getGlobals()
+    getProducers()
+  }
+
+  _submit() {
     const {
       actions
     } = this.props
     const {
-      getProducers,
-      getGlobals
-    } = actions
+      selected_bpcs
+    } = this.state
 
-    getGlobals()
-    getProducers()
+    console.log(selected_bpcs, 'selected_bpcs submit')
+
+    actions.voteproducers(selected_bpcs)
+  }
+
+  _onPressBpcsItem(bpc) {
+    const {
+      old_selected
+    } = this.state
+    var selected_bpcs = this.state.selected_bpcs
+
+    // const idx = selected_bpcs.indexOf(bpc)
+    const idx = selected_bpcs.indexOf(bpc.owner)
+    selected_bpcs = Object.assign([], selected_bpcs)
+    if (idx > -1) {
+      // Remove selection
+      selected_bpcs.splice(idx, 1)
+    } else {
+      // Check max selection
+      if (selected_bpcs.length >= MAX_SELECT) {
+        const indicator = {
+          icon: IndicatorIcon.ICON_INVALID,
+          title: 'Exceeds limits',
+          desc: 'The maximum number of BPs that can be selected is 30',
+          toast: true
+        }
+        this.setState({
+          indicator,
+          show_indicator: true
+        })
+        return
+      }
+      // Add selection
+      selected_bpcs.push(bpc.owner)
+    }
+
+    //
+    console.log(old_selected)
+    console.log(selected_bpcs)
+    console.log(this._isSelectChanged(old_selected, selected_bpcs), 'changed')
+
+    this.setState({
+      selected_bpcs,
+      changed: this._isSelectChanged(old_selected, selected_bpcs)
+    })
+    console.log(selected_bpcs, "selected_bpcs")
+  }
+
+  _onPressVote() {
+    this.setState({
+      show_confirm: true
+    })
   }
 
   _onPressDone() {
@@ -121,13 +235,123 @@ class VoteView extends React.Component {
     this.props.navigation.navigate('SettingModal')
   }
 
+  _showSubmittingIndicator() {
+    const indicator = {
+      icon: IndicatorIcon.ICON_LOADING,
+      title: 'Trasmitting Vote',
+      desc: 'via Mainnet',
+      toast: false
+    }
+
+    this.setState({
+      indicator,
+      show_indicator: true
+    })
+  }
+
+  _showCompleteIndicator() {
+    const indicator = {
+      icon: IndicatorIcon.ICON_VALID,
+      title: 'Success!',
+      desc: 'Trasmitting Vote',
+      toast: true
+    }
+
+    this.setState({
+      indicator,
+      show_indicator: true
+    })
+  }
+
+  _showSubmitFailIndicator() {
+    const indicator = {
+      icon: IndicatorIcon.ICON_INVALID,
+      title: 'Failed submitting!',
+      desc: 'Error occured',
+      toast: true
+    }
+
+    this.setState({
+      indicator,
+      show_indicator: true
+    })
+  }
+
+  _renderConfirm() {
+    const {
+      show_confirm,
+      selected_bpcs
+    } = this.state
+
+    if (!show_confirm) return undefined
+
+    return (
+      <Confirm
+        show={true}
+        title="Confirm Selection"
+        desc={`You are voting for ${selected_bpcs.length} ${selected_bpcs.length > 1 ? 'BPCs' : 'BPC' }`}
+        content={
+          <View style={{flex: 1, paddingTop: 10}}>
+            {selected_bpcs.map((item, index) =>
+              <Text key={`selected-confrim-${item}`} style={{minHeight: 25, fontSize: 15, textAlign: 'center', color: '#eee'}}>
+                {item}
+              </Text>
+            )}
+          </View>
+        }
+        cancelButtonText="Cancel"
+        confirmButtonText="SUBMIT"
+        onHide={()=>{
+          this.setState({show_confirm: false})
+        }}
+        onConfirm={()=>{
+
+          this._submit()
+
+          this.setState({
+            show_confirm: false,
+            submitting: true,
+          })
+
+          this._showSubmittingIndicator()
+
+          // setTimeout(()=>{
+          //   this._showSubmitFailIndicator()
+          // }, 3000)
+        }}
+        onCancel={()=>{
+          this.setState({show_confirm: false})
+        }}
+       />
+    )
+  }
+
   _renderIndicator() {
-    const { show_indicator, indicator } = this.state
+    const {
+      show_indicator,
+      indicator
+    } = this.state
+    const {
+      icon,
+      title,
+      desc,
+      toast
+    } = indicator
+
+    console.log(indicator, show_indicator)
+
     if (!show_indicator) return undefined
 
-    return(
-      <Indicator />
-    )
+    return (
+      <Indicator
+        icon={icon}
+        title={title}
+        desc={desc}
+        toast={toast}
+        show={toast ? false : true}
+        onHide={() => {
+          this.setState({show_indicator : false})
+        }}/>)
   }
 
   _cleanUrl(url) {
@@ -139,7 +363,12 @@ class VoteView extends React.Component {
 
   render() {
     const { selected_bpcs, bpcs, custom_url, producers } = this.state
-    const { account, settings } = this.props
+    const {
+      accounts,
+      settings
+    } = this.props
+    const account = accounts[settings.account] || {}
+
     return (
       <SafeAreaView style={{flex: 1}} forceInset={{top: 'always'}}>
         <OnLayout style={{flex: 1}}>
@@ -152,7 +381,9 @@ class VoteView extends React.Component {
                 <View style={styles.top_right}>
                   <TouchableOpacity style={{alignItems: 'flex-end'}} onPress={this._onPressStake.bind(this)}>
                     <Text style={[styles.bold, {color:'#999', fontSize: 14}]}><Icon name="user" size={16}/> {settings.account}</Text>
-                    <Text style={{color: 'orange', fontSize: 10, fontWeight: '600'}}>Staked <Text style={styles.bold}>1,100</Text> EOS - <Text style={{textDecorationLine: 'underline'}}>Change</Text></Text>
+                    <Text style={{color: 'orange', fontSize: 10, fontWeight: '600'}}>
+                      Staked <Text style={styles.bold}>{numberWithCommas(_.get(account, 'voter_info.staked') / 10000)}</Text> EOS - <Text style={{textDecorationLine: 'underline'}}>Change</Text>
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -163,27 +394,31 @@ class VoteView extends React.Component {
                   </Text>
                 </View>
                 <View style={styles.content}>
-                  <Text style={{color: 'rgb(158, 158, 158)', fontSize: 12}}>Selected 3 of 30</Text>
+                  <Text style={{color: 'rgb(158, 158, 158)', fontSize: 12}}><Icon name="check" size={10}/> Selected {selected_bpcs.length} of {MAX_SELECT}</Text>
                   {/* ----- BPCs LIST AREA ---- */}
                   <FlatList
                     showsVerticalScrollIndicator={false}
                     style={styles.bpcs_box}
                     data={producers.list}
                     extraData={selected_bpcs}
-                    renderItem={({item}) => (
-                      <TouchableOpacity key={item.account} onPress={this._onPressBpcsItem.bind(this, item)}>
+                    keyExtractor={(item, index) => item.owner}
+                    renderItem={({item, index}) => (
+                      <TouchableOpacity key={item.owner} onPress={this._onPressBpcsItem.bind(this, item)}>
                         <View style={styles.bpcs_item}>
+                          <Text style={styles.bpcs_item_rank }>
+                            {index + 1}
+                          </Text>
                           <Icon
                             style={styles.bpcs_item_check}
                             size={24}
                             name="check"
                             color={
-                              _.find(selected_bpcs, {owner: item.owner})
+                              selected_bpcs.indexOf(item.owner) > -1
                               ? "rgb(46, 204, 113)"
                               : "#e7e7e7"
                             }/>
                           <Text style={{color: '#555', fontWeight: '800'}}>
-                            {item.owner}
+                            {item.owner} {index < 21 ? <Icon name="award" size={10}/> : undefined}
                           </Text>
                           <Text style={{color: '#bbb'}}>
                             {this._cleanUrl(item.url)}
@@ -219,10 +454,11 @@ class VoteView extends React.Component {
                   </View>
                 </TouchableOpacity>
               </View>
-              {this._renderIndicator()}
             </View>
           )}
         </OnLayout>
+        {this._renderIndicator()}
+        {this._renderConfirm()}
       </SafeAreaView>
     );
   }
@@ -230,9 +466,11 @@ class VoteView extends React.Component {
 
 function mapStateToProps(state, props) {
   return {
+    accounts: state.accounts,
     settings: state.settings,
     producers: state.producers,
-    globals: state.globals
+    globals: state.globals,
+    system: state.system
   }
 }
 
@@ -242,7 +480,8 @@ function mapDispatchToProps(dispatch) {
       ...AccountActions,
       ...SettingsActions,
       ...ProducersActions,
-      ...GlobalsActions
+      ...GlobalsActions,
+      ...VoteproducerActions
     }, dispatch)
   };
 }
@@ -305,7 +544,20 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: 'center',
     marginBottom: 1,
-    paddingLeft: 54
+    paddingLeft: 54,
+    marginLeft: 16
+  },
+  bpcs_item_rank: {
+    position: 'absolute',
+    fontSize: 8,
+    left: -16,
+    backgroundColor: '#ccc',
+    borderColor: '#eee',
+    color: '#eee',
+    minWidth: 16,
+    textAlign: 'center',
+    height: 48,
+    paddingTop: 18
   },
   bpcs_item_check: {
     position: 'absolute',

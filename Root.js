@@ -17,6 +17,7 @@ import SettingsView from './containers/SettingsView'
 import StakeView from './containers/StakeView'
 import EVWebView from './containers/WebView'
 import ApiWebView from './containers/ApiWebView'
+import TestView from './containers/TestView'
 
 import ApiDelegate from './api/ApiDelegate'
 import * as AccountActions from './actions/accounts'
@@ -90,7 +91,7 @@ class Root extends React.Component {
 
     console.log(props, 'Root props')
 
-    var isLogged = false //settings.account ? true : false
+    var isLogged = false  //settings.account ? true : false
     const Main = { screen: MainStack }
     const AuthMain = { screen: AuthMainStack }
 

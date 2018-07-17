@@ -3,8 +3,10 @@ import {
   StyleSheet,
   Text,
   View,
+  ScrollView,
   ActivityIndicator,
-  Animated
+  Animated,
+  TouchableOpacity
 } from 'react-native'
 import PropTypes from 'prop-types'
 import Icon from 'react-native-vector-icons/Feather'
@@ -13,28 +15,29 @@ import Dimensions from 'Dimensions'
 
 var {height, width} = Dimensions.get('window');
 
-export const ICON_LOADING = "icon_loading"
-export const ICON_VALID = "icon_valid"
-export const ICON_INVALID = "icon_invalid"
-
-
-export default class Indicator extends React.Component {
+export default class Confirm extends React.Component {
 
   static propTypes = {
-    icon: PropTypes.string,
+    icon: PropTypes.element,
     title: PropTypes.string,
     desc: PropTypes.string,
-    onHide: PropTypes.func
+    content: PropTypes.element,
+    cancelButtonText: PropTypes.string,
+    confirmButtonText: PropTypes.string,
+    onHide: PropTypes.func,
+    onConfirm: PropTypes.func,
+    onCancel: PropTypes.func
   }
 
   state = {
     show: this.props.show,
     toast: this.props.toast,
-    content: {
-      icon: this.props.icon,
-      title: this.props.title,
-      desc: this.props.desc,
-    },
+    icon: this.props.icon,
+    title: this.props.title,
+    desc: this.props.desc,
+    content: this.props.content,
+    cancelButtonText: this.props.cancelButtonText || 'Cancel',
+    confirmButtonText: this.props.confirmButtonText || 'Confirm',
     fade: new Animated.Value(0)
   }
 
@@ -60,10 +63,13 @@ export default class Indicator extends React.Component {
     let content = {
       icon: nextProps.icon,
       title: nextProps.title,
-      desc: nextProps.desc
+      desc: nextProps.desc,
+      content: nextProps.content,
+      cancelButtonText: nextProps.cancelButtonText,
+      confirmButtonText: nextProps.confirmButtonText,
     }
 
-    this.setState({content})
+    this.setState(content)
 
     if (nextProps.hasOwnProperty('show')
         || nextProps.hasOwnProperty('toast')) {
@@ -130,19 +136,56 @@ export default class Indicator extends React.Component {
     })
   }
 
+  _onPressConfirm() {
+    this._hideIndicator(0, ()=>{
+      if (this.props.onConfirm)
+        this.props.onConfirm()
+    })
+  }
+
+  _onPressCancel() {
+    this._hideIndicator(0, ()=>{
+      if (this.props.onCancel)
+        this.props.onCancel()
+    })
+  }
+
   render() {
-    const { content, show, fade } = this.state
+    const {
+      show,
+      toast,
+      icon,
+      title,
+      desc,
+      content,
+      cancelButtonText,
+      confirmButtonText,
+      fade
+    } = this.state
 
     return (
-      <Animated.View pointerEvents="box-none" style={[styles.indicator_overlay, {width: width, height: height, opacity: fade}]}>
-        <View style={styles.indicator_box}>
-          { content.icon == ICON_LOADING
-            ? <ActivityIndicator style={styles.indicator} size="large" />
-            : content.icon == ICON_VALID
-            ? <Icon size={40} name="check" color="rgb(46, 204, 113)"/>
-            : <Icon size={40} name="x" color="rgb(231, 76, 60)"/>}
-          <Text style={styles.indicator_desc}>{content.desc}</Text>
-          <Text style={styles.indicator_text}>{content.title}</Text>
+      <Animated.View pointerEvents="box-none" style={[styles.overlay, {width: width, height: height, opacity: fade}]}>
+        <View style={styles.box}>
+          {icon}
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.desc}>{desc}</Text>
+          {content
+          ? <ScrollView
+             contentContainerStyle={{
+
+             }}
+             style={styles.content}>
+             {content}
+            </ScrollView>
+          : undefined }
+          <View style={styles.buttons}>
+            <TouchableOpacity onPress={this._onPressCancel.bind(this)} style={styles.left}>
+              <Text style={styles.left_text}>{cancelButtonText}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={this._onPressConfirm.bind(this)} style={styles.right}>
+              <Text style={styles.right_text}>{confirmButtonText}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Animated.View>
     )
@@ -151,7 +194,7 @@ export default class Indicator extends React.Component {
 
 
 const styles = StyleSheet.create({
-  indicator_overlay: {
+  overlay: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -160,12 +203,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  indicator_box: {
+  box: {
     padding: 15,
     backgroundColor: 'rgba(0,0,0,0.7)',
     borderRadius: 50,
     width: 250,
-    minHeight: 250,
+    minHeight: 350,
+    maxHeight: 430,
     shadowColor: '#000',
     shadowOffset: { width: 5, height: 5 },
     shadowOpacity: 0.8,
@@ -175,19 +219,50 @@ const styles = StyleSheet.create({
   },
   indicator: {
   },
-  indicator_text: {
+  title: {
     textAlign: 'center',
     marginTop: 15,
     fontWeight: "800",
-    color: '#ddd'
+    color: '#ddd',
+    minHeight: 20
   },
-  indicator_desc: {
-    marginTop: 35,
-    padding: 20,
+  desc: {
+    padding: 10,
     fontWeight: "400",
     color: '#ddd',
     fontSize: 11,
-    textAlign: 'center'
+    textAlign: 'center',
+    minHeight: 25,
   },
-
+  content: {
+    flex: 1,
+    width: '100%',
+    maxHeight: 200,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  buttons: {
+    flexDirection: 'row',
+    minHeight: 48
+  },
+  left: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  left_text: {
+    color: 'red',
+    opacity: .7
+  },
+  right: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  right_text: {
+    color: '#fff',
+    fontWeight: '600'
+  }
 })

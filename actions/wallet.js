@@ -52,9 +52,9 @@ export function unlockWallet(wallet, password) {
     dispatch({
       type: types.VALIDATE_WALLET_PASSWORD_PENDING
     });
-    const { api } = getState();
+    const { connection, api } = getState();
     const key = decrypt(wallet.data, password).toString(CryptoJS.enc.Utf8);
-    api.request(Api.IS_VALID_PRIVATE, {key: key})
+    api.request(connection, Api.IS_VALID_PRIVATE, {key: key})
     .then((valid) => {
       if (valid === true) {
         return dispatch({

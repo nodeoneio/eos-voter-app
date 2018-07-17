@@ -31,7 +31,7 @@ import * as ValidateActions from '../actions/validate'
 import * as Api from '../api/ApiDelegate'
 
 
-console.disableYellowBox = true;
+
 process.env.NODE_ENV = 'production'
 
 var {height, width} = Dimensions.get('window');
@@ -40,10 +40,6 @@ class AccessAccount extends React.Component {
 
   static navigationOptions = {
     header: null,
-  }
-
-  static propTypes = {
-    completion_type: PropTypes.string
   }
 
   state = {
@@ -94,7 +90,8 @@ class AccessAccount extends React.Component {
 
   _onPressNext() {
     const {
-      key
+      key,
+      connection
     } = this.state
     const {
       validate,
@@ -104,7 +101,7 @@ class AccessAccount extends React.Component {
 
     this.props.actions.setTemporaryKey(key)
 
-    api.request(Api.IS_VALID_PRIVATE, {key: key})
+    api.request(connection, Api.IS_VALID_PRIVATE, {key: key})
     .then((valid) => {
       console.log('valid key!', key)
       actions.validateKey(key)
@@ -245,6 +242,10 @@ function mapDispatchToProps(dispatch) {
       ...ValidateActions
     }, dispatch)
   };
+}
+
+AccessAccount.propTypes = {
+  completion_type: PropTypes.string
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(AccessAccount)

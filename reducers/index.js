@@ -8,6 +8,8 @@ import validate from './validate'
 import producers from './producers'
 import globals from './globals'
 import keys from './keys'
+import system from './system'
+import connection from './connection'
 
 const rootReducer = combineReducers({
   api,
@@ -17,7 +19,9 @@ const rootReducer = combineReducers({
   validate,
   producers,
   globals,
-  keys
+  keys,
+  system,
+  connection
 })
 
 export default rootReducer
