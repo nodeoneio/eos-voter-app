@@ -118,12 +118,12 @@ const styles = StyleSheet.create({
   top: {
     height: 42,
     marginTop: 15,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : 'white',
+    backgroundColor:'white',
     flexDirection: 'row'
   },
   body: {
     flex: 1,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined,
+    backgroundColor:undefined,
   },
   bottom: {
     height: 80,
@@ -140,11 +140,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginRight: 16,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor:undefined,
   },
   header: {
     height: 84,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'grey' : undefined
+    backgroundColor:undefined
   },
   content: {
     flex: 1,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     minHeight: 200,
     width: '100%',
     justifyContent: 'center',
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'grey' : undefined,
+    backgroundColor:undefined,
     borderBottomWidth: 1,
     borderBottomColor: '#eee'
   },
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     color: 'rgb(94, 94, 94)',
     fontFamily: 'Kohinoor Bangla',
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'white' : undefined
+    backgroundColor:undefined
   },
   about: {
     flex: 1,

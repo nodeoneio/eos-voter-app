@@ -10,6 +10,7 @@ import globals from './globals'
 import keys from './keys'
 import system from './system'
 import connection from './connection'
+import balances from './balances'
 
 const rootReducer = combineReducers({
   api,
@@ -21,7 +22,8 @@ const rootReducer = combineReducers({
   globals,
   keys,
   system,
-  connection
+  connection,
+  balances
 })
 
 export default rootReducer

@@ -63,7 +63,7 @@ export function getProducers(previous = false) {
         backupMinimumPercent = 100 / tokensToProducersForVotes;
       }
       const data = rows
-        .filter((p) => (p.producer_key !== 'EOS1111111111111111111111111111111114T1Anm'))
+        .filter((p) => (p.producer_key !== 'EOS1111111111111111111111111111111114T1Anm' && p.owner !== undefined))
         .map((producer) => {
           const votes = parseInt(producer.total_votes, 10);
           const percent = votes / current.total_producer_vote_weight;

@@ -13,22 +13,24 @@ import {
   Animated,
   ScrollView
 } from 'react-native'
+import PropTypes from 'prop-types'
+import { bindActionCreators } from 'redux'
+import { connect } from 'react-redux'
 import Icon from 'react-native-vector-icons/Feather'
 import IonIcon from 'react-native-vector-icons/Ionicons'
 import OnLayout from 'react-native-on-layout'
 import Dimensions from 'Dimensions'
 import * as consts from '../common/constants'
-import PropTypes from 'prop-types'
 import { NavigationActions, StackActions, SafeAreaView } from 'react-navigation'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 import Indicator, * as IndicatorIcon from '../components/Indicator'
-
-
-process.env.NODE_ENV = 'production'
+import * as SettingsActions from '../actions/settings'
+import * as WalletActions from '../actions/wallet'
+import * as ValidateActions from '../actions/validate'
 
 var {height, width} = Dimensions.get('window');
 
-export default class SetPassword extends React.Component {
+class SetPassword extends React.Component {
 
   static navigationOptions = {
     header: null,
@@ -44,7 +46,8 @@ export default class SetPassword extends React.Component {
       icon: undefined,
       title: undefined,
       content: undefined
-    }
+    },
+    fade: new Animated.Value(1)
   }
 
   constructor(props) {
@@ -56,18 +59,41 @@ export default class SetPassword extends React.Component {
 
   }
 
-  _goNext() {
-    // this.props.navigation.dispatch({
-    //   type: 'Navigation/RESET',
-    //   index: 0,
-    //   actions: [{ type: 'Navigate', routeName: 'VoteView' }]
-    // })
+  _fadeOut(callback) {
+    Animated.sequence([
+      Animated.delay(0), // Option
+      Animated.parallel([
+        Animated.timing(
+          this.state.fade,
+          {
+            toValue: 0,
+            duration: 200,
+          }
+        )
+      ])
+    ]).start(()=>{
+      if (callback)
+        callback()
+    })
+  }
 
-    this.props.navigation.dispatch(StackActions.reset({
-      index: 0,
-      key: null,
-      actions: [NavigationActions.navigate({ routeName: 'Main' })]
-    }))
+  _goNext() {
+    const {
+      completion_type,
+    } = this.state
+
+    if (completion_type === consts.COMPLETION_TYPE_NEXT) {
+      this._fadeOut(()=>{
+        this.props.navigation.dispatch(StackActions.reset({
+          index: 0,
+          key: null,
+          actions: [NavigationActions.navigate({ routeName: 'Main' })]
+        }))
+      })
+      return
+    }
+
+    this.props.navigation.goBack()
   }
 
   _onPressCancel() {
@@ -79,8 +105,13 @@ export default class SetPassword extends React.Component {
     const {
       password,
       password_confirm,
-      skip
+      skip,
     } = this.state
+    const {
+      actions,
+      wallet,
+      keys
+    } = this.props
 
     // Validation
     let indicator = {}
@@ -99,6 +130,9 @@ export default class SetPassword extends React.Component {
         indicator.title = 'Success!'
         indicator.desc = 'Password configured'
         setTimeout(() => {
+          // Save key
+          actions.setWalletKey(keys.key, password)
+
           this._goNext()
         }, 2000)
       }
@@ -146,97 +180,108 @@ export default class SetPassword extends React.Component {
   }
 
   render() {
-    const { password, password_confirm, completion_type, skip } = this.state
+    const {
+      settings
+    } = this.props
+    const {
+      password,
+      password_confirm,
+      completion_type,
+      skip,
+      fade
+    } = this.state
     return (
       <SafeAreaView style={{flex: 1}}>
         <OnLayout style={{flex: 1}}>
           {({ width, height}) => (
-            <KeyboardAwareScrollView style={{flex: 1}}>
-              <View style={[styles.container, {height: height}]}>
-                <View style={styles.top}>
-                  <View style={styles.top_left}>
-                    <Text style={styles.hint}>{completion_type == consts.COMPLETION_TYPE_DONE ? '' : 'STEP 3'}</Text>
-                  </View>
-                  <View style={styles.top_right}>
-                    <Image style={{width:42, height:42}} source={require('../images/eos_spinning_logo_tiny.gif')}/>
-                  </View>
-                </View>
-                <View style={styles.body}>
-                  <View style={styles.header}>
-                    <Text style={styles.header_title}>
-                      SET WALLET{'\n'}PASSWORD
-                    </Text>
-                  </View>
-                  <View style={styles.content}>
-                    {completion_type == consts.COMPLETION_TYPE_DONE
-                     ? undefined
-                     : <Text style={{color: 'rgb(94, 94, 94)'}}>Account Name : <Text style={styles.bold}>robinsonpark</Text></Text>}
-
-                    <View style={styles.input_area}>
-                      {/* ----- INPUT AREA ---- */}
-                      <View style={styles.password_input_box}>
-                        <TextInput
-                          style={[styles.password_input, {opacity: skip ? .3 : 1}]}
-                          value={password}
-                          editable={!skip}
-                          secureTextEntry
-                          onChangeText={(password) => this.setState({password})}
-                          clearButtonMode="while-editing"
-                          placeholder="enter password.."/>
-                      </View>
-                      <View style={styles.password_input_box}>
-                        <TextInput
-                          style={[styles.password_input, {opacity: skip ? .3 : 1}]}
-                          value={password_confirm}
-                          editable={!skip}
-                          secureTextEntry
-                          onChangeText={(password_confirm) => this.setState({password_confirm})}
-                          clearButtonMode="while-editing"
-                          placeholder="confirm password.."/>
-                      </View>
-                      {completion_type == consts.COMPLETION_TYPE_DONE
-                       ? undefined
-                       : <TouchableOpacity
-                           style={{
-                              marginTop: 10,
-                              width: '100%',
-                              height: 30,
-                              justifyContent: 'flex-start',
-                              alignItems: 'center',
-                              flexDirection: 'row'}}
-                           onPress={this._onPressSkip.bind(this)}>
-                        <IonIcon style={{padding: 3, paddingTop: 5, marginRight: 5}} size={20} color={ skip ? 'orange' : '#ddd'} name={ skip ? 'ios-radio-button-on' : 'ios-radio-button-off'}/>
-                           <Text style={{color: 'rgb(94, 94, 94)'}}>Skip this Step</Text>
-                         </TouchableOpacity>}
-                      <View style={{padding: 5, marginTop: 10}}>
-                        <Text style={{color: 'rgb(158, 158, 158)'}}>
-                          If you don't use password to lock your wallet, you will have to re-enter your priate key every time you access your account.
-                        </Text>
-                      </View>
+            <Animated.View style={{flex: 1, opacity: fade}}>
+              <KeyboardAwareScrollView style={{flex: 1}}>
+                <View style={[styles.container, {height: height}]}>
+                  <View style={styles.top}>
+                    <View style={styles.top_left}>
+                      <Text style={styles.hint}>{completion_type == consts.COMPLETION_TYPE_DONE ? '' : 'STEP 3'}</Text>
+                    </View>
+                    <View style={styles.top_right}>
+                      <Image style={{width:42, height:42}} source={require('../images/eos_spinning_logo_tiny.gif')}/>
                     </View>
                   </View>
-                </View>
-                <View style={styles.bottom}>
-                  <View style={styles.bottom_left}>
-                    {completion_type == consts.COMPLETION_TYPE_DONE
-                    ? <TouchableOpacity onPress={this._onPressCancel.bind(this)}>
-                        <Text style={[styles.minor_button, styles.text_left]}>
-                          CANCEL
-                        </Text>
-                      </TouchableOpacity>
-                    : undefined}
-                  </View>
-                  <TouchableOpacity onPress={this._onPressNext.bind(this)}>
-                    <View style={styles.bottom_right}>
-                      <Text style={[styles.major_button, styles.text_right]}>
-                        {completion_type == consts.COMPLETION_TYPE_DONE ? 'DONE' : 'NEXT 〉'}
+                  <View style={styles.body}>
+                    <View style={styles.header}>
+                      <Text style={styles.header_title}>
+                        SET WALLET{'\n'}PASSWORD
                       </Text>
                     </View>
-                  </TouchableOpacity>
+                    <View style={styles.content}>
+                      {completion_type == consts.COMPLETION_TYPE_DONE
+                       ? undefined
+                       : <Text style={{color: 'rgb(94, 94, 94)'}}>Account Name : <Text style={styles.bold}>{settings.account}</Text></Text>}
+
+                      <View style={styles.input_area}>
+                        {/* ----- INPUT AREA ---- */}
+                        <View style={styles.password_input_box}>
+                          <TextInput
+                            style={[styles.password_input, {opacity: skip ? .3 : 1}]}
+                            value={password}
+                            editable={!skip}
+                            secureTextEntry
+                            onChangeText={(password) => this.setState({password})}
+                            clearButtonMode="while-editing"
+                            placeholder="enter password.."/>
+                        </View>
+                        <View style={styles.password_input_box}>
+                          <TextInput
+                            style={[styles.password_input, {opacity: skip ? .3 : 1}]}
+                            value={password_confirm}
+                            editable={!skip}
+                            secureTextEntry
+                            onChangeText={(password_confirm) => this.setState({password_confirm})}
+                            clearButtonMode="while-editing"
+                            placeholder="confirm password.."/>
+                        </View>
+                        {completion_type == consts.COMPLETION_TYPE_DONE
+                         ? undefined
+                         : <TouchableOpacity
+                             style={{
+                                marginTop: 10,
+                                width: '100%',
+                                height: 30,
+                                justifyContent: 'flex-start',
+                                alignItems: 'center',
+                                flexDirection: 'row'}}
+                             onPress={this._onPressSkip.bind(this)}>
+                          <IonIcon style={{padding: 3, paddingTop: 5, marginRight: 5}} size={20} color={ skip ? 'orange' : '#ddd'} name={ skip ? 'ios-radio-button-on' : 'ios-radio-button-off'}/>
+                             <Text style={{color: 'rgb(94, 94, 94)'}}>Skip this Step</Text>
+                           </TouchableOpacity>}
+                        <View style={{padding: 5, marginTop: 10}}>
+                          <Text style={{color: 'rgb(158, 158, 158)'}}>
+                            If you don't use password to lock your wallet, you will have to re-enter your priate key every time you access your account.
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.bottom}>
+                    <View style={styles.bottom_left}>
+                      {completion_type == consts.COMPLETION_TYPE_DONE
+                      ? <TouchableOpacity onPress={this._onPressCancel.bind(this)}>
+                          <Text style={[styles.minor_button, styles.text_left]}>
+                            CANCEL
+                          </Text>
+                        </TouchableOpacity>
+                      : undefined}
+                    </View>
+                    <TouchableOpacity onPress={this._onPressNext.bind(this)}>
+                      <View style={styles.bottom_right}>
+                        <Text style={[styles.major_button, styles.text_right]}>
+                          {completion_type == consts.COMPLETION_TYPE_DONE ? 'DONE' : 'NEXT 〉'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                  {/* {this._renderIndicator(width, height)} */}
                 </View>
-                {/* {this._renderIndicator(width, height)} */}
-              </View>
-            </KeyboardAwareScrollView>
+              </KeyboardAwareScrollView>
+            </Animated.View>
           )}
         </OnLayout>
         {this._renderIndicator()}
@@ -246,9 +291,30 @@ export default class SetPassword extends React.Component {
 }
 
 SetPassword.propTypes = {
-  onComplete: PropTypes.func,
   completion_type: PropTypes.string
 }
+
+function mapStateToProps(state, props) {
+  return {
+    settings: state.settings,
+    validate: state.validate,
+    wallet: state.wallet,
+    keys: state.keys
+  }
+}
+
+function mapDispatchToProps(dispatch) {
+  return {
+    actions: bindActionCreators({
+      ...SettingsActions,
+      ...WalletActions,
+      ...ValidateActions
+    }, dispatch)
+  };
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(SetPassword)
+
 
 const styles = StyleSheet.create({
   /* Layer 1 */
@@ -261,17 +327,17 @@ const styles = StyleSheet.create({
   top: {
     height: 42,
     marginTop: 15,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : 'white',
+    backgroundColor: 'white',
     flexDirection: 'row'
   },
   body: {
     flex: 1,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined,
+    backgroundColor: undefined,
     paddingBottom: 40
   },
   bottom: {
     height: 42,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
     flexDirection: 'row'
   },
   indicator_overlay: {
@@ -318,11 +384,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginRight: 16,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
   },
   header: {
     height: 84,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'grey' : undefined
+    backgroundColor: undefined
   },
   content: {
     flex: 1,
@@ -350,13 +416,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
     marginLeft: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : undefined
+    backgroundColor: undefined
   },
   bottom_right: {
     flex: 1,
     justifyContent: 'center',
     marginRight: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined
+    backgroundColor: undefined
   },
   /* Common */
   bold: {

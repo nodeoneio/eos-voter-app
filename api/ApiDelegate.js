@@ -19,6 +19,9 @@ export const UNDELEGATEBW = 'undelegatebw'
 export const GET_BLOCK = 'getBlock'
 export const GET_TABLE_ROWS = 'getTableRows'
 export const GET_CURRENCY_STATES = 'getCurrencyStats'
+export const GET_ACTIONS = 'getActions'
+export const GET_CURRENCY_BALANCE = 'getCurrencyBalance'
+export const REFUND = 'refund'
 
 export const IS_VALID_PRIVATE = 'isValidPrivate'
 export const PRIVATE_TO_PUBLIC = 'privateToPublic'
@@ -36,6 +39,9 @@ const __apiRequests = {
   [GET_BLOCK]: {},
   [GET_TABLE_ROWS]: {},
   [GET_CURRENCY_STATES]: {},
+  [GET_ACTIONS]: {},
+  [GET_CURRENCY_BALANCE]: {},
+  [REFUND]: {},
 
   [IS_VALID_PRIVATE]: {},
   [PRIVATE_TO_PUBLIC]: {},
@@ -117,11 +123,11 @@ export default class ApiDelegate {
           delegater,
           receiver,
           netAmount,
-          cpuAmount
+          cpuAmount,
+          sign
         } = req.options
 
-        var account = req.options.account
-        script = `delegatebw("${req.requestId}", ${JSON.stringify(config)}, "${delegater}", "${receiver}", "${netAmount}", "${cpuAmount}");`
+        script = `delegatebw("${req.requestId}", ${JSON.stringify(config)}, ${JSON.stringify(sign)}, "${delegater}", "${receiver}", ${netAmount}, ${cpuAmount});`
       }
       break
       case UNDELEGATEBW: {
@@ -132,11 +138,12 @@ export default class ApiDelegate {
           delegater,
           receiver,
           netAmount,
-          cpuAmount
+          cpuAmount,
+          sign
         } = req.options
 
         var account = req.options.account
-        script = `undelegatebw("${req.requestId}", ${JSON.stringify(config)}, "${delegater}", "${receiver}", "${netAmount}", "${cpuAmount}");`
+        script = `undelegatebw("${req.requestId}", ${JSON.stringify(config)}, ${JSON.stringify(sign)}, "${delegater}", "${receiver}", ${netAmount}, ${cpuAmount});`
       }
       break
       case GET_BLOCK: {
@@ -164,6 +171,31 @@ export default class ApiDelegate {
         script = `getCurrencyStats("${req.requestId}", ${JSON.stringify(config)}, "${account}", "${symbol}");`
       }
       break
+      case GET_ACTIONS: {
+        // Check Parameters
+        if (!this._validateParams(api, ['account'], req, requests)) return
+
+        var account = req.options.account
+        script = `getActions("${req.requestId}", ${JSON.stringify(config)}, "${account}");`
+      }
+      break
+      case GET_CURRENCY_BALANCE: {
+        // Check Parameters
+        if (!this._validateParams(api, ['contract','account','symbol'], req, requests)) return
+
+        var contract = req.options.contract
+        var account = req.options.account
+        var symbol = req.options.symbol
+        script = `getCurrencyBalance("${req.requestId}", ${JSON.stringify(config)}, "${contract}", "${account}", "${symbol}");`
+      }
+      break
+      case REFUND: {
+        // Check Parameters
+        if (!this._validateParams(api, ['account'], req, requests)) return
+
+        var account = req.options.account
+        script = `refund("${req.requestId}", ${JSON.stringify(config)}, "${account}");`
+      }
 
       /* eosjs-cc */
       case IS_VALID_PRIVATE: {
@@ -253,6 +285,9 @@ export default class ApiDelegate {
       case "handleVoteproducers":
       case "handleDelegatebw":
       case "handleUndelegatebw":
+      case "handleGetActions":
+      case "handleGetCurrencyBalance":
+      case "handleRefund":
           this[msgData.targetFunc].apply(this, [msgData]);
           break
     }
@@ -279,44 +314,17 @@ export default class ApiDelegate {
     }
   }
 
-  handleGetKeyAccounts(res) {
-    this._fireCallback(res, GET_KEY_ACCOUNTS)
-  }
-
-  handleGetAccount(res) {
-    this._fireCallback(res, GET_ACCOUNT)
-  }
-
-  handleGetBlock(res) {
-    this._fireCallback(res, GET_BLOCK)
-  }
-
-  handleIsValidPrivate(res) {
-    this._fireCallback(res, IS_VALID_PRIVATE)
-  }
-
-  handlePrivateToPublic(res) {
-    this._fireCallback(res, PRIVATE_TO_PUBLIC)
-  }
-
-  handleGetTableRows(res) {
-    this._fireCallback(res, GET_TABLE_ROWS)
-  }
-
-  handleGetCurrencyStates(res) {
-    this._fireCallback(res, GET_CURRENCY_STATES)
-  }
-
-  handleVoteproducers(res) {
-    this._fireCallback(res, VOTE_PRODUCERS)
-  }
-
-  handleDelegatebw(res) {
-    this._fireCallback(res, DELEGATEBW)
-  }
-
-  handleUndelegatebw(res) {
-    this._fireCallback(res, UNDELEGATEBW)
-  }
-
+  handleGetKeyAccounts(res) { this._fireCallback(res, GET_KEY_ACCOUNTS)}
+  handleGetAccount(res) { this._fireCallback(res, GET_ACCOUNT)}
+  handleGetBlock(res) { this._fireCallback(res, GET_BLOCK)}
+  handleIsValidPrivate(res) { this._fireCallback(res, IS_VALID_PRIVATE)}
+  handlePrivateToPublic(res) { this._fireCallback(res, PRIVATE_TO_PUBLIC)}
+  handleGetTableRows(res) { this._fireCallback(res, GET_TABLE_ROWS)}
+  handleGetCurrencyStates(res) { this._fireCallback(res, GET_CURRENCY_STATES)}
+  handleVoteproducers(res) { this._fireCallback(res, VOTE_PRODUCERS)}
+  handleDelegatebw(res) { this._fireCallback(res, DELEGATEBW)}
+  handleUndelegatebw(res) { this._fireCallback(res, UNDELEGATEBW)}
+  handleGetActions(res) { this._fireCallback(res, GET_ACTIONS)}
+  handleGetCurrencyBalance(res) { this._fireCallback(res, GET_CURRENCY_BALANCE)}
+  handleRefund(res) { this._fireCallback(res, REFUND)}
 }

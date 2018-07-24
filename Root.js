@@ -1,10 +1,10 @@
 import { AppRegistry } from 'react-native'
-
+import _ from 'lodash'
 import React from 'react'
 import PropTypes from 'prop-types'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
-import { View, WebView } from 'react-native'
+import { View, WebView, AppState } from 'react-native'
 import { createStackNavigator } from 'react-navigation'
 import SelectNetworkView from './containers/SelectNetworkView'
 import FindAccountView from './containers/FindAccountView'
@@ -22,6 +22,8 @@ import TestView from './containers/TestView'
 import ApiDelegate from './api/ApiDelegate'
 import * as AccountActions from './actions/accounts'
 import * as ApiActions from './actions/api'
+import * as WalletActions from './actions/wallet'
+import * as SettingsActions from './actions/settings'
 
 
 /* Navigation Flows */
@@ -60,11 +62,23 @@ const SettingStack = createStackNavigator(
     SelectNetwork: SelectNetworkView,
     SetPassword: SetPasswordView,
     ChangePassword: ChangePasswordView,
-    UnlockWallet: UnlockWalletView,
     SettingsView: SettingsView
   },
   {
     initialRouteName: 'SettingsView',
+  },
+  {
+    mode: 'modal',
+    headerMode: 'none',
+  }
+)
+
+const UnlockWallet = createStackNavigator(
+  {
+    UnlockWallet: UnlockWalletView,
+  },
+  {
+    initialRouteName: 'UnlockWallet',
   },
   {
     mode: 'modal',
@@ -77,8 +91,11 @@ class Root extends React.Component {
 
   static propTypes = {
     dispatch: PropTypes.func.isRequired,
-    history: PropTypes.object.isRequired,
     data: PropTypes.object
+  }
+
+  state = {
+    appState: AppState.currentState
   }
 
   constructor(props) {
@@ -91,13 +108,13 @@ class Root extends React.Component {
 
     console.log(props, 'Root props')
 
-    var isLogged = false  //settings.account ? true : false
+    var hasPassword = wallet.data ? true : false
     const Main = { screen: MainStack }
     const AuthMain = { screen: AuthMainStack }
 
     var startingView
-    if (isLogged) {
-      startingView = { Main, AuthMain }
+    if (hasPassword) {
+      startingView = { UnlockWallet, Main, AuthMain }
     } else {
       startingView = { AuthMain, Main }
     }
@@ -136,12 +153,40 @@ class Root extends React.Component {
     )
   }
 
+  componentDidMount() {
+    AppState.addEventListener('change', this._handleAppStateChange);
+  }
+
+  componentWillUnmount() {
+    AppState.removeEventListener('change', this._handleAppStateChange);
+  }
+
+  _presentUnlockView() {
+    this.props.navigation.dispatch(StackActions.reset({
+      index: 0,
+      key: null,
+      actions: [NavigationActions.navigate({ routeName: 'Unlock' })]
+    }))
+  }
+
+  _handleAppStateChange = (nextAppState) => {
+    if (this.state.appState.match(/inactive|background/) && nextAppState === 'active') {
+      console.log('App has come to the foreground!')
+    } else {
+      // wallet.data 가 있고 현재 뷰가 UnlockWallet 이 아닐 경우
+      // --> 현재뷰를 UnlockWallet 뷰로 바꿈
+      if (_.get(this._root, 'props.navigation.state.routeName') !== 'Unlock') {
+          this._presentUnlockView()
+      }
+    }
+    this.setState({appState: nextAppState});
+  }
 
   render() {
     return (
       <View style={{flex: 1}}>
         <ApiWebView />
-        <RootStack />
+        <RootStack ref={(el) => { this._root = el}} />
       </View>
     )
   }
@@ -150,7 +195,7 @@ class Root extends React.Component {
 function mapStateToProps(state, props) {
   return {
     keys: state.keys,
-    wallets: state.wallet,
+    wallet: state.wallet,
     settings: state.settings
   }
 }

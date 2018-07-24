@@ -4,26 +4,17 @@ const initialState = {
   data: false
 };
 
-export default function keys(state = initialState, action) {
+export default function wallet(state = initialState, action) {
   switch (action.type) {
-    case types.RESET_ALL_STATES:
-    case types.WALLET_LOCK:
-    case types.WALLET_REMOVE: {
+    case types.WALLET_REMOVE:
+    case types.RESET_ALL_STATES: {
       return Object.assign({}, initialState);
     }
-    case types.SET_TEMPORARY_KEY: {
-      return Object.assign({}, state, {
-        account: action.payload.account,
-        key: action.payload.key,
-        temporary: true
-      });
-    }
-    case types.VALIDATE_WALLET_PASSWORD_SUCCESS:
     case types.SET_WALLET_KEY: {
       return Object.assign({}, state, {
         account: action.payload.account,
-        key: action.payload.key,
-        temporary: false
+        data: action.payload.data,
+        version: 1
       });
     }
     default: {

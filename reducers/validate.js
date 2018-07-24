@@ -15,6 +15,9 @@ export default function validate(state = {}, action) {
 
   const [, requestName, requestState] = matches;
 
+  console.log(action, 'reducers action')
+  console.log(requestName, requestState, 'reducers validate')
+
   return {
     ...state,
     [requestName]: requestState,

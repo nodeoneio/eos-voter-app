@@ -134,7 +134,7 @@ export default class Indicator extends React.Component {
     const { content, show, fade } = this.state
 
     return (
-      <Animated.View pointerEvents="box-none" style={[styles.indicator_overlay, {width: width, height: height, opacity: fade}]}>
+      <Animated.View style={[styles.indicator_overlay, {width: width, height: height, opacity: fade}]}>
         <View style={styles.indicator_box}>
           { content.icon == ICON_LOADING
             ? <ActivityIndicator style={styles.indicator} size="large" />
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     padding: 20,
     fontWeight: "400",
     color: '#ddd',
-    fontSize: 11,
+    fontSize: 12,
     textAlign: 'center'
   },
 

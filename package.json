@@ -19,7 +19,8 @@
     "start": "react-native start",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "rm ./node_modules/react-native/local-cli/core/__fixtures__/files/package.json"
   },
   "jest": {
     "preset": "react-native"
@@ -30,11 +31,11 @@
     "babel-runtime": "^6.26.0",
     "buffer": "^5.1.0",
     "crypto-js": "^3.1.9-1",
+    "decimal.js": "^10.0.1",
     "eosjs": "^15.0.3",
     "prop-types": "^15.6.2",
-    "react": "16.4.1",
-    "react-native": "^0.56.0",
-    "react-native-eosjs": "0.0.6",
+    "react": "16.2.0",
+    "react-native": "^0.53.3",
     "react-native-iphone-x-helper": "^1.0.3",
     "react-native-keyboard-aware-scroll-view": "^0.6.0",
     "react-native-on-layout": "^2.0.2",

@@ -7,12 +7,17 @@ import { PersistGate } from 'redux-persist/integration/react'
 import TestView from './containers/TestView'
 
 const { store, persistor } = configureStore()
-const unsubscribe = store.subscribe(() =>
-  console.log(store.getState(), 'State Subscribe')
-)
 
-// console.log = ()=>{}
-console.warn = ()=>{}
+
+console.log(process.env.NODE_ENV, 'node env')
+if (process.env.NODE_ENV == 'development') {
+  const unsubscribe = store.subscribe(() =>
+    console.log(store.getState(), 'State Subscribe')
+  )
+} else {
+  console.log = ()=>{}
+  console.warn = ()=>{}
+}
 console.disableYellowBox = true
 console.ignoredYellowBox = ['Warning: Each', 'Warning: Failed']
 

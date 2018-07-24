@@ -1,4 +1,5 @@
 import React from 'react'
+import _ from 'lodash'
 import {
   StyleSheet,
   Text,
@@ -12,28 +13,43 @@ import {
   Animated,
   ScrollView
 } from 'react-native'
+import { bindActionCreators } from 'redux'
+import { connect } from 'react-redux'
 import { SafeAreaView } from 'react-navigation'
 import OnLayout from 'react-native-on-layout'
 import Icon from 'react-native-vector-icons/Feather'
 import * as consts from '../common/constants'
 import SegmentedControlTab from 'react-native-segmented-control-tab'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
+import * as AccountActions from '../actions/accounts'
+import * as SettingsActions from '../actions/settings'
+import Indicator, * as IndicatorIcon from '../components/Indicator'
+import Confirm from '../components/Confirm'
 
-// process.env.NODE_ENV = 'development'
+import * as StakeActions from '../actions/stake'
 
 const __actions = ['Stake', 'Unstake']
 
-export default class StakeView extends React.Component {
+class StakeView extends React.Component {
 
   static navigationOptions = {
     header: null,
   }
 
   state = {
-    net: 0,
-    cpu: 0,
+    net: '',
+    cpu: '',
+    EOSbalance: (this.props.balance && this.props.balance.EOS) ? this.props.balance.EOS : 0,
     isVisible: false,
-    action: __actions[0]
+    action: __actions[0],
+    show_indicator: false,
+    indicator: {
+      icon: undefined,
+      title: undefined,
+      desc: undefined,
+      toast: false
+    },
+    submitting: false
   }
 
   constructor(props) {
@@ -41,18 +57,199 @@ export default class StakeView extends React.Component {
 
   }
 
-  _onPressClose() {
-    // this.props.navigation.navigate('Main')
-    // this.props.navigation.goBack()
-    this.props.navigation.navigate('Main')
+  componentWillReceiveProps(nextProps) {
+    console.log(nextProps, 'StakeView nextProps')
+
+    const {
+      system
+    } = nextProps
+
+    if (system.STAKE === 'SUCCESS') {
+      this._showCompleteIndicator()
+      console.log('_showCompleteIndicator')
+      this.setState({submitting: false})
+    } else if (system.STAKE === 'FAILURE') {
+      this._showSubmitFailIndicator()
+      console.log('_showSubmitFailIndicator')
+      this.setState({submitting: false})
+    } else if (system.STAKE === 'PENDING') {
+
+      // console.log('_showLoadingIndicator')
+    }
+  }
+
+  _showLoadingIndicator() {
+    const indicator = {
+      icon: IndicatorIcon.ICON_LOADING,
+      title: 'Submitting',
+      desc: 'via Mainnet',
+      toast: false
+    }
+    this.setState({indicator, show_indicator: true})
+
+    console.log('_showLoadingIndicator')
+  }
+
+  _showSubmitFailIndicator() {
+    const indicator = {
+      icon: IndicatorIcon.ICON_INVALID,
+      title: 'Failed',
+      desc: 'Something went wrong. Try agian',
+      toast: true
+    }
+    this.setState({indicator, show_indicator: true})
+    console.log('_showSubmitFailIndicator')
+  }
+
+  _showCompleteIndicator() {
+    const {
+      net,
+      cpu,
+      action
+    } = this.state
+    const indicator = {
+      icon: IndicatorIcon.ICON_VALID,
+      title: 'Success!',
+      desc: `${action}d\n net ${net}\n cpu ${cpu} \n`,
+      toast: true
+    }
+    this.setState({indicator, show_indicator: true})
+  }
+
+  _validate() {
+    const {
+      net,
+      cpu,
+      EOSbalance,
+      action
+    } = this.state
+    const {
+      settings,
+      accounts
+    } = this.props
+    const account = accounts[settings.account]
+    var availAmt = _.get(account, 'core_liquid_balance') || '0 EOS'
+    availAmt = parseFloat(availAmt.substring(availAmt.length - 4, -4))
+    var staked_net = _.get(account, 'self_delegated_bandwidth.net_weight') || '0 EOS'
+    staked_net = parseFloat(staked_net.substring(staked_net.length - 4, -4))
+    var staked_cpu = _.get(account, 'self_delegated_bandwidth.cpu_weight') || '0 EOS'
+    staked_cpu = parseFloat(staked_cpu.substring(staked_cpu.length - 4, -4))
+
+    const decimalRegex = /^\d+(\.\d{1,4})?$/;
+    const staking_sum = parseFloat(net) + parseFloat(cpu)
+
+    if (!decimalRegex.test(net) || !decimalRegex.test(cpu)) {
+      const indicator = {
+        icon: IndicatorIcon.ICON_INVALID,
+        title: 'Invalid Format',
+        desc: 'Invalid stake amount',
+        toast: true
+      }
+      this.setState({indicator, show_indicator: true})
+      return false
+    }
+
+    if (action === 'Stake' && staking_sum > availAmt) {
+      const indicator = {
+        icon: IndicatorIcon.ICON_INVALID,
+        title: 'Invalid Amount',
+        desc: `Sum of cpu and net amount cannot be over ${availAmt} EOS`,
+        toast: true
+      }
+      this.setState({indicator, show_indicator: true})
+      return false
+    }
+
+    if (action === 'Unstake' && staking_sum > staked_cpu + staked_net) {
+      const indicator = {
+        icon: IndicatorIcon.ICON_INVALID,
+        title: 'Invalid Amount',
+        desc: `Sum of cpu and net amount MUST be over ${staked_cpu + staked_net} EOS`,
+        toast: true
+      }
+      this.setState({indicator, show_indicator: true})
+      return false
+    }
+
+
+    return true
   }
 
   _onPressSubmit() {
+    const {
+      action,
+      net,
+      cpu,
+      submitting
+    } = this.state
+    const {
+      actions,
+      settings
+    } = this.props
+    const {
+      setStake,
+      setUnstake
+    } = actions
 
+    if (submitting)
+      return
+
+    if (!this._validate()) {
+      return
+    }
+
+    this._showLoadingIndicator()
+
+    this.setState({submitting: true}, () => {
+      if (action === 'Stake') {
+        setStake(settings.account, net, cpu)
+      } else {
+        setUnstake(settings.account, net, cpu)
+      }
+    })
+  }
+
+  _onPressClose() {
+    this.props.navigation.navigate('Main')
+  }
+
+  _renderIndicator() {
+    const {
+      show_indicator,
+      indicator
+    } = this.state
+    const {
+      icon,
+      title,
+      desc,
+      toast
+    } = indicator
+
+    if (!show_indicator) return undefined
+
+    return (
+      <Indicator
+        icon={icon}
+        title={title}
+        desc={desc}
+        toast={toast}
+        show={toast ? false : true}
+        onHide={() => {
+          this.setState({show_indicator : false, indicator:{}})
+        }}/>)
   }
 
   render() {
-    const { net, cpu } = this.state
+    const {
+      net,
+      cpu,
+      action
+    } = this.state
+    const {
+      accounts,
+      settings
+    } = this.props
+    const account = accounts[settings.account]
     return(
       <SafeAreaView style={{flex: 1}} forceInset={{top: 'always'}}>
         <OnLayout style={{flex: 1}}>
@@ -71,11 +268,11 @@ export default class StakeView extends React.Component {
                 <View style={styles.body}>
                   <View style={styles.header}>
                     <Icon name="user" size={16} color="#333"/>
-                    <Text style={[styles.bold, {color:'#333'}]}>robinsonpark</Text>
+                    <Text style={[styles.bold, {color:'#333'}]}>{settings.account}</Text>
                   </View>
                   <View style={styles.content}>
                     <View style={styles.balance}>
-                      <Text style={{
+                      {/* <Text style={{
                         color:'#bbb',
                         fontWeight: 'bold',
                         textDecorationLine: 'underline',
@@ -85,31 +282,35 @@ export default class StakeView extends React.Component {
                         color: '#888',
                         fontFamily: 'Kohinoor Bangla',
                         fontSize: 18
-                      }]}><Text style={styles.emp}>1,234</Text> EOS</Text>
+                      }]}><Text style={styles.emp}>1,234</Text> EOS</Text> */}
                       <Text style={{
                         color:'#bbb',
                         fontWeight: 'bold',
                         textDecorationLine: 'underline',
                         fontSize: 14,
-                        marginTop: 20
+                        marginBottom: 10
                       }}>Staked</Text>
                       <Text style={[styles.bold, {
                         color: '#888',
                         fontFamily: 'Kohinoor Bangla',
                         fontSize: 18
-                      }]}>net <Text style={styles.emp}>10</Text> EOS / cpu <Text style={styles.emp}>10</Text> EOS</Text>
+                      }]}>
+                      NET <Text style={styles.emp}>{_.get(account, 'self_delegated_bandwidth.net_weight')}</Text> {'\n'}
+                      CPU <Text style={styles.emp}>{_.get(account, 'self_delegated_bandwidth.cpu_weight')}</Text>
+                      </Text>
                       <Text style={{
                         color:'#bbb',
                         fontWeight: 'bold',
                         textDecorationLine: 'underline',
                         fontSize: 14,
-                        marginTop: 20
+                        marginTop: 25,
+                        marginBottom: 10
                       }}>Available to stake</Text>
                       <Text style={[styles.bold, {
                         color: '#888',
                         fontFamily: 'Kohinoor Bangla',
                         fontSize: 18
-                      }]}><Text style={styles.emp}>1,224</Text> EOS</Text>
+                      }]}><Text style={styles.emp}>{_.get(account, 'core_liquid_balance')}</Text></Text>
                     </View>
                     <View style={styles.stake}>
                       <View style={styles.select_box}>
@@ -155,17 +356,41 @@ export default class StakeView extends React.Component {
                 </View>
                 <View style={styles.bottom}>
                   <TouchableOpacity style={styles.submit} onPress={this._onPressSubmit.bind(this)}>
-                    <Text style={styles.submit_text}>SUBMIT</Text>
+                    <Text style={styles.submit_text}>{action.toUpperCase()}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </KeyboardAwareScrollView>
           )}
         </OnLayout>
+        {this._renderIndicator()}
       </SafeAreaView>
     )
   }
 }
+
+
+
+function mapStateToProps(state, props) {
+  return {
+    accounts: state.accounts,
+    settings: state.settings,
+    system: state.system,
+    balance: state.balance
+  }
+}
+
+function mapDispatchToProps(dispatch) {
+  return {
+    actions: bindActionCreators({
+      ...AccountActions,
+      ...SettingsActions,
+      ...StakeActions
+    }, dispatch)
+  };
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(StakeView)
 
 const styles = StyleSheet.create({
   /* Layer 1 */
@@ -178,12 +403,12 @@ const styles = StyleSheet.create({
   top: {
     height: 42,
     marginTop: 15,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : 'white',
+    backgroundColor: 'white',
     flexDirection: 'row'
   },
   body: {
     flex: 1,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined,
+    backgroundColor: undefined,
   },
   bottom: {
     height: 80,
@@ -202,11 +427,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginRight: 16,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
   },
   header: {
     height: 84,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'grey' : undefined,
+    backgroundColor: undefined,
     justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: 3,

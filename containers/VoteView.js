@@ -34,8 +34,6 @@ import * as GlobalsActions from '../actions/globals'
 import * as VoteproducerActions from '../actions/system/voteproducers'
 
 
-process.env.NODE_ENV = 'production'
-
 const ICON_LOADING = "icon_loading"
 const ICON_VALID = "icon_valid"
 const ICON_INVALID = "icon_invalid"
@@ -63,7 +61,8 @@ class VoteView extends React.Component {
     system: {},
     submitting: false,
     lastError: false,
-    lastTransaction: {}
+    lastTransaction: {},
+    fade: new Animated.Value(0)
   }
 
   _interval = null
@@ -79,14 +78,14 @@ class VoteView extends React.Component {
       settings
     } = this.props
 
-    // setTimeout(()=>{
-    //
-    //   this._loadData()
-    // }, 1500)
-
-    this._interval = setInterval(() => {
+    this._fadeIn()
+    setTimeout(()=>{
+      actions.getAccount(settings.account)
       this._loadData()
-    }, 5000)
+      // this._interval = setInterval(() => {
+      //   this._loadData()
+      // }, 5000)
+    }, 1000)
   }
 
   componentWillReceiveProps(newProps) {
@@ -132,6 +131,7 @@ class VoteView extends React.Component {
   componentWillUnmount() {
     if (this._interval)
       clearInterval(this._interval)
+
   }
 
   _isSelectChanged(a = [], b = []) {
@@ -149,7 +149,6 @@ class VoteView extends React.Component {
       getGlobals,
       getAccount
     } = actions
-    getAccount(settings.account)
     getGlobals()
     getProducers()
   }
@@ -165,6 +164,21 @@ class VoteView extends React.Component {
     console.log(selected_bpcs, 'selected_bpcs submit')
 
     actions.voteproducers(selected_bpcs)
+  }
+
+  _fadeIn() {
+    Animated.sequence([
+      Animated.delay(0), // Option
+      Animated.parallel([
+        Animated.timing(
+          this.state.fade,
+          {
+            toValue: 1,
+            duration: 200,
+          }
+        )
+      ])
+    ]).start()
   }
 
   _onPressBpcsItem(bpc) {
@@ -232,7 +246,8 @@ class VoteView extends React.Component {
   }
 
   _onPressSettings() {
-    this.props.navigation.navigate('SettingModal')
+    this._loadData()
+    // this.props.navigation.navigate('SettingModal')
   }
 
   _showSubmittingIndicator() {
@@ -362,7 +377,13 @@ class VoteView extends React.Component {
   }
 
   render() {
-    const { selected_bpcs, bpcs, custom_url, producers } = this.state
+    const {
+      selected_bpcs,
+      bpcs,
+      custom_url,
+      producers,
+      fade
+    } = this.state
     const {
       accounts,
       settings
@@ -373,88 +394,90 @@ class VoteView extends React.Component {
       <SafeAreaView style={{flex: 1}} forceInset={{top: 'always'}}>
         <OnLayout style={{flex: 1}}>
           {({ width, height}) => (
-            <View style={[styles.container, {height: height}]}>
-              <View style={styles.top}>
-                <View style={styles.top_left}>
-                  <Image style={{width:42, height:42}} source={require('../images/eos_spinning_logo_tiny.gif')}/>
+            <Animated.View style={{flex: 1, opacity: fade}}>
+              <View style={[styles.container, {height: height}]}>
+                <View style={styles.top}>
+                  <View style={styles.top_left}>
+                    <Image style={{width:42, height:42}} source={require('../images/eos_spinning_logo_tiny.gif')}/>
+                  </View>
+                  <View style={styles.top_right}>
+                    <TouchableOpacity style={{alignItems: 'flex-end'}} onPress={this._onPressStake.bind(this)}>
+                      <Text style={[styles.bold, {color:'#999', fontSize: 14}]}><Icon name="user" size={16}/> {settings.account}</Text>
+                      <Text style={{color: 'orange', fontSize: 10, fontWeight: '600'}}>
+                        Staked <Text style={styles.bold}>{numberWithCommas(_.get(account, 'voter_info.staked') / 10000)}</Text> EOS - <Text style={{textDecorationLine: 'underline'}}>Change</Text>
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.top_right}>
-                  <TouchableOpacity style={{alignItems: 'flex-end'}} onPress={this._onPressStake.bind(this)}>
-                    <Text style={[styles.bold, {color:'#999', fontSize: 14}]}><Icon name="user" size={16}/> {settings.account}</Text>
-                    <Text style={{color: 'orange', fontSize: 10, fontWeight: '600'}}>
-                      Staked <Text style={styles.bold}>{numberWithCommas(_.get(account, 'voter_info.staked') / 10000)}</Text> EOS - <Text style={{textDecorationLine: 'underline'}}>Change</Text>
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <View style={styles.body}>
-                <View style={styles.header}>
-                  <Text style={styles.header_title}>
-                    SELECT{'\n'}BPCs & VOTE
-                  </Text>
-                </View>
-                <View style={styles.content}>
-                  <Text style={{color: 'rgb(158, 158, 158)', fontSize: 12}}><Icon name="check" size={10}/> Selected {selected_bpcs.length} of {MAX_SELECT}</Text>
-                  {/* ----- BPCs LIST AREA ---- */}
-                  <FlatList
-                    showsVerticalScrollIndicator={false}
-                    style={styles.bpcs_box}
-                    data={producers.list}
-                    extraData={selected_bpcs}
-                    keyExtractor={(item, index) => item.owner}
-                    renderItem={({item, index}) => (
-                      <TouchableOpacity key={item.owner} onPress={this._onPressBpcsItem.bind(this, item)}>
-                        <View style={styles.bpcs_item}>
-                          <Text style={styles.bpcs_item_rank }>
-                            {index + 1}
-                          </Text>
-                          <Icon
-                            style={styles.bpcs_item_check}
-                            size={24}
-                            name="check"
-                            color={
-                              selected_bpcs.indexOf(item.owner) > -1
-                              ? "rgb(46, 204, 113)"
-                              : "#e7e7e7"
-                            }/>
-                          <Text style={{color: '#555', fontWeight: '800'}}>
-                            {item.owner} {index < 21 ? <Icon name="award" size={10}/> : undefined}
-                          </Text>
-                          <Text style={{color: '#bbb'}}>
-                            {this._cleanUrl(item.url)}
-                          </Text>
-                          <View style={styles.scaled_vote_box}>
-                            <Text style={{color: '#aaa', fontSize: 11}}>
-                              {item.percent ? (item.percent * 100).toFixed(2) + '%' : '-'}
-                            </Text>
-                          </View>
-                          <TouchableHighlight
-                            underlayColor="#eee"
-                            style={styles.bpcs_item_link_box}
-                            onPress={this._onPressLink.bind(this, item.url)}>
-                            <IonIcon name="md-link" size={24} color="rgb(190, 190, 190)"/>
-                          </TouchableHighlight>
-                        </View>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-              </View>
-              <View style={styles.bottom}>
-                <View style={styles.bottom_left}>
-                  <TouchableOpacity style={styles.settings_box} onPress={this._onPressSettings.bind(this)}>
-                    <IonIcon size={25} name="ios-settings" color="rgb(190, 190, 190))"/>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity onPress={this._onPressVote.bind(this)}>
-                  <View style={styles.bottom_right}>
-                    <Text style={[styles.major_button, styles.text_right]}>
-                      VOTE
+                <View style={styles.body}>
+                  <View style={styles.header}>
+                    <Text style={styles.header_title}>
+                      SELECT{'\n'}BPCs & VOTE
                     </Text>
                   </View>
-                </TouchableOpacity>
+                  <View style={styles.content}>
+                    <Text style={{color: 'rgb(158, 158, 158)', fontSize: 12}}><Icon name="check" size={10}/> Selected {selected_bpcs.length} of {MAX_SELECT}</Text>
+                    {/* ----- BPCs LIST AREA ---- */}
+                    <FlatList
+                      showsVerticalScrollIndicator={false}
+                      style={styles.bpcs_box}
+                      data={producers.list}
+                      extraData={selected_bpcs}
+                      keyExtractor={(item, index) => item.owner}
+                      renderItem={({item, index}) => (
+                        <TouchableOpacity key={item.owner} onPress={this._onPressBpcsItem.bind(this, item)}>
+                          <View style={styles.bpcs_item}>
+                            <Text style={styles.bpcs_item_rank }>
+                              {index + 1}
+                            </Text>
+                            <Icon
+                              style={styles.bpcs_item_check}
+                              size={24}
+                              name="check"
+                              color={
+                                selected_bpcs.indexOf(item.owner) > -1
+                                ? "rgb(46, 204, 113)"
+                                : "#e7e7e7"
+                              }/>
+                            <Text style={{color: '#555', fontWeight: '800'}}>
+                              {item.owner} {index < 21 ? <Icon name="award" size={10}/> : undefined}
+                            </Text>
+                            <Text style={{color: '#bbb'}}>
+                              {this._cleanUrl(item.url)}
+                            </Text>
+                            <View style={styles.scaled_vote_box}>
+                              <Text style={{color: '#aaa', fontSize: 11}}>
+                                {item.percent ? (item.percent * 100).toFixed(2) + '%' : '-'}
+                              </Text>
+                            </View>
+                            <TouchableHighlight
+                              underlayColor="#eee"
+                              style={styles.bpcs_item_link_box}
+                              onPress={this._onPressLink.bind(this, item.url)}>
+                              <IonIcon name="md-link" size={24} color="rgb(190, 190, 190)"/>
+                            </TouchableHighlight>
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  </View>
+                </View>
+                <View style={styles.bottom}>
+                  <View style={styles.bottom_left}>
+                    <TouchableOpacity style={styles.settings_box} onPress={this._onPressSettings.bind(this)}>
+                      <IonIcon size={25} name="ios-settings" color="rgb(190, 190, 190))"/>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity onPress={this._onPressVote.bind(this)}>
+                    <View style={styles.bottom_right}>
+                      <Text style={[styles.major_button, styles.text_right]}>
+                        VOTE
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            </Animated.View>
           )}
         </OnLayout>
         {this._renderIndicator()}
@@ -499,16 +522,16 @@ const styles = StyleSheet.create({
   top: {
     height: 42,
     marginTop: 15,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : 'white',
+    backgroundColor: 'white',
     flexDirection: 'row'
   },
   body: {
     flex: 1,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined
+    backgroundColor: undefined
   },
   bottom: {
     height: 44,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
     flexDirection: 'row',
     marginBottom: 10
   },
@@ -523,11 +546,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginRight: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
   },
   header: {
     height: 84,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'grey' : undefined
+    backgroundColor: undefined
   },
   content: {
     flex: 1,
@@ -584,7 +607,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginLeft: 20,
     paddingLeft: 10,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : undefined,
+    backgroundColor: undefined,
     // backgroundColor: 'blue'
   },
   settings_box: {
@@ -595,7 +618,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     marginRight: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined,
+    backgroundColor: undefined,
   },
   /* Common */
   bold: {

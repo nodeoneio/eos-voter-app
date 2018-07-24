@@ -12,39 +12,32 @@ import {
   Animated,
   ScrollView
 } from 'react-native'
+import { bindActionCreators } from 'redux'
+import { connect } from 'react-redux'
 import Icon from 'react-native-vector-icons/Feather'
+import Indicator, * as IndicatorIcon from '../components/Indicator'
 import OnLayout from 'react-native-on-layout'
 import Dimensions from 'Dimensions'
 import * as consts from '../common/constants'
 import PropTypes from 'prop-types'
-import { SafeAreaView } from 'react-navigation'
+import { NavigationActions, StackActions, SafeAreaView } from 'react-navigation'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
+import * as SettingsActions from '../actions/settings'
+import * as WalletActions from '../actions/wallet'
 
-
-process.env.NODE_ENV = 'production'
-
-const __networks = [
-  "api.main-net.eosnodeone.io",
-  "mainnet.eoscanada.com",
-  "fn.eossweden.se",
-  "bp.cryptolions.io"
-]
-
-var {height, width} = Dimensions.get('window');
-
-const ICON_LOADING = "icon_loading"
-const ICON_VALID = "icon_valid"
-const ICON_INVALID = "icon_invalid"
-
-export default class UnlockWallet extends React.Component {
+class UnlockWalletView extends React.Component {
 
   static navigationOptions = {
     header: null,
   }
 
   state = {
-    completion_type: this.props.navigation.getParam('completion_type', consts.COMPLETION_TYPE_NEXT),
-    password: null
+    password: null,
+    show_indicator: false,
+    indicator: {},
+    submitting: false,
+    success: false,
+    fade: new Animated.Value(1),
   }
 
   constructor(props) {
@@ -52,99 +45,246 @@ export default class UnlockWallet extends React.Component {
 
   }
 
-  componentDidMount() {
+  componentWillReceiveProps(nextProps) {
+    const {
+      submitting
+    } = this.state
+    const {
+      wallet,
+      validate
+    } = nextProps
 
+    if (submitting) {
+      console.log(validate, 'Unlockwallet componentWillReceiveProps')
+      if (validate.WALLET_PASSWORD === 'SUCCESS') {
+        this._showCompleteIndicator()
+        this.setState({submitting: false, success: true})
+      } else if (validate.WALLET_PASSWORD === 'FAILURE'){
+        this._showSubmitFailIndicator()
+        this.setState({submitting: false, success: false})
+      }
+    }
   }
 
-  _onPressNext() {
-    this.props.navigation.navigate('SetPassword')
+  _finishCheck() {
+    const {
+      success
+    } = this.state
+    const {
+      navigation,
+      validate
+    } = this.props
+
+    console.log(navigation)
+
+    if (success) {
+      this._fadeOut(() => {
+        this.props.navigation.dispatch(StackActions.reset({
+          index: 0,
+          key: null,
+          actions: [NavigationActions.navigate({ routeName: 'Main' })]
+        }))
+      })
+    }
   }
 
-  _onPressDone() {
-    alert('Done')
+  _fadeOut(callback) {
+    Animated.sequence([
+      Animated.delay(0), // Option
+      Animated.parallel([
+        Animated.timing(
+          this.state.fade,
+          {
+            toValue: 0,
+            duration: 200,
+          }
+        )
+      ])
+    ]).start(()=>{
+      if (callback)
+        callback()
+    })
+  }
+
+  _showCompleteIndicator() {
+    const indicator = {
+      icon: IndicatorIcon.ICON_VALID,
+      title: 'Unlocked!',
+      desc: '',
+      toast: true
+    }
+    console.log('_showCompleteIndicator')
+    this.setState({show_indicator: true, indicator})
+  }
+
+  _showSubmitFailIndicator() {
+    const indicator = {
+      icon: IndicatorIcon.ICON_INVALID,
+      title: 'Wrong Password',
+      desc: '',
+      toast: true
+    }
+    console.log('_showSubmitFailIndicator')
+    this.setState({show_indicator: true, indicator})
+  }
+
+  _showLoadingIndicator() {
+    const indicator = {
+      icon: IndicatorIcon.ICON_LOADING,
+      title: 'Unlocking',
+      desc: '...',
+      toast: false
+    }
+    console.log('_showLoadingIndicator')
+    this.setState({show_indicator: true, indicator})
+  }
+
+  _onPressUnlock() {
+    const {
+      password,
+      submitting
+    } = this.state
+    const {
+      actions,
+      wallet
+    } = this.props
+
+    if (submitting)
+      return
+
+      this._showLoadingIndicator()
+
+    this.setState({submitting: true}, () => {
+      actions.unlockWallet(wallet, password)
+    })
   }
 
   _onPressCancel() {
     this.props.navigation.goBack()
   }
 
+  _renderIndicator() {
+    const {
+      show_indicator,
+      indicator
+    } = this.state
+    const {
+      icon,
+      title,
+      desc,
+      toast
+    } = indicator
+
+    console.log(indicator, show_indicator)
+
+    if (!show_indicator) return undefined
+
+    return (
+      <Indicator
+        icon={icon}
+        title={title}
+        desc={desc}
+        toast={toast}
+        show={toast ? false : true}
+        onHide={() => {
+          this.setState({show_indicator : false})
+          this._finishCheck()
+        }}/>)
+  }
+
   render() {
-    const { completion_type, password } = this.state
+    const {
+      password,
+      fade,
+    } = this.state
+    const {
+      navigation
+    } = this.props
     return (
       <SafeAreaView style={{flex: 1}}>
         <OnLayout style={{flex: 1}}>
           {({ width, height}) => (
-            <KeyboardAwareScrollView style={{flex: 1}}>
-              <View style={[styles.container, {height: height}]}>
-                <View style={styles.top}>
-                  <View style={styles.top_left}>
-                    <Text style={styles.hint}>{completion_type == consts.COMPLETION_TYPE_DONE ? '' : 'STEP 3'}</Text>
+            <Animated.View style={{flex: 1, opacity: fade}}>
+              <KeyboardAwareScrollView style={{flex: 1}}>
+                <View style={[styles.container, {height: height}]}>
+                  <View style={styles.top}>
+                    <View style={styles.top_left}>
+                    </View>
+                    <View style={styles.top_right}>
+                      <Image style={{width:42, height:42}} source={require('../images/eos_spinning_logo_tiny.gif')}/>
+                    </View>
                   </View>
-                  <View style={styles.top_right}>
-                    <Image style={{width:42, height:42}} source={require('../images/eos_spinning_logo_tiny.gif')}/>
-                  </View>
-                </View>
-                <View style={styles.body}>
-                  <View style={styles.header}>
-                    <Text style={styles.header_title}>
-                      WALLET IS{'\n'}LOCKED
-                    </Text>
-                  </View>
-                  <View style={styles.content}>
-                    <View style={styles.input_area}>
-                      {/* ----- INPUT AREA ---- */}
-                      <View style={styles.password_input_box}>
-                        <TextInput
-                          style={[styles.password_input]}
-                          value={password}
-                          secureTextEntry
-                          onChangeText={(password) => this.setState({password})}
-                          clearButtonMode="while-editing"
-                          placeholder="enter here.."/>
-                      </View>
-                      <Text style={{color: 'rgb(94, 94, 94)', marginTop: 15}}>
-                        Enter wallet <Text style={styles.bold}>password</Text> to unlock
+                  <View style={styles.body}>
+                    <View style={styles.header}>
+                      <Text style={styles.header_title}>
+                        WALLET IS{'\n'}LOCKED
                       </Text>
-                      <View style={{padding: 5, marginTop: 20}}>
-                        <Text style={{color: 'rgb(158, 158, 158)', fontSize: 12}}>
-                          If you don't use password to lock your wallet, you will have to re-enter your priate key every time you access your account.
+                    </View>
+                    <View style={styles.content}>
+                      <View style={styles.input_area}>
+                        {/* ----- INPUT AREA ---- */}
+                        <View style={styles.password_input_box}>
+                          <TextInput
+                            style={[styles.password_input]}
+                            value={password}
+                            secureTextEntry
+                            onChangeText={(password) => this.setState({password})}
+                            clearButtonMode="while-editing"
+                            placeholder="enter here.."/>
+                        </View>
+                        <Text style={{color: 'rgb(94, 94, 94)', marginTop: 15}}>
+                          Enter wallet <Text style={styles.bold}>password</Text> to unlock
                         </Text>
+                        <View style={{padding: 5, marginTop: 20}}>
+                          <Text style={{color: 'rgb(158, 158, 158)', fontSize: 12}}>
+                            Your wallet password is only used to encrypt/decrypt your private key, and not stored in the app. So if you lost your wallet password, remove the app and install again.
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </View>
-                </View>
-                <View style={styles.bottom}>
-                  <View style={styles.bottom_left}>
-                    {completion_type == consts.COMPLETION_TYPE_DONE
-                    ? <TouchableOpacity onPress={this._onPressCancel.bind(this)}>
-                        <Text style={[styles.minor_button, styles.text_left]}>
-                          CANCEL
-                        </Text>
-                      </TouchableOpacity>
-                    : undefined}
-                  </View>
-                  <TouchableOpacity onPress={this._onPressNext.bind(this)}>
-                    <View style={styles.bottom_right}>
-                      <Text style={[styles.major_button, styles.text_right]}>
-                        {completion_type == consts.COMPLETION_TYPE_DONE ? 'DONE' : 'NEXT 〉'}
-                      </Text>
+                  <View style={styles.bottom}>
+                    <View style={styles.bottom_left}>
                     </View>
-                  </TouchableOpacity>
+                    <TouchableOpacity onPress={this._onPressUnlock.bind(this)}>
+                      <View style={styles.bottom_right}>
+                        <Text style={[styles.major_button, styles.text_right]}>
+                          UNLOCK
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                {/* {this._renderIndicator(width, height)} */}
-              </View>
-            </KeyboardAwareScrollView>
+              </KeyboardAwareScrollView>
+            </Animated.View>
           )}
         </OnLayout>
+        {this._renderIndicator()}
       </SafeAreaView>
     );
   }
 }
 
-UnlockWallet.propTypes = {
-  onComplete: PropTypes.func,
-  completion_type: PropTypes.string
+function mapStateToProps(state, props) {
+  return {
+    keys: state.keys,
+    wallet: state.wallet,
+    settings: state.settings,
+    validate: Object.assign({}, state.validate)
+  }
 }
+
+function mapDispatchToProps(dispatch) {
+  return {
+    actions: bindActionCreators({
+      ...SettingsActions,
+      ...WalletActions
+    }, dispatch)
+  };
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(UnlockWalletView)
+
 
 const styles = StyleSheet.create({
   /* Layer 1 */
@@ -157,16 +297,16 @@ const styles = StyleSheet.create({
   top: {
     height: 42,
     marginTop: 15,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : 'white',
+    backgroundColor: 'white',
     flexDirection: 'row'
   },
   body: {
     flex: 1,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined,
+    backgroundColor: undefined,
   },
   bottom: {
     height: 42,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
     flexDirection: 'row'
   },
   indicator_overlay: {
@@ -219,11 +359,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginRight: 16,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
   },
   header: {
     height: 84,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'grey' : undefined
+    backgroundColor: undefined
   },
   content: {
     flex: 1,
@@ -245,13 +385,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     marginLeft: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : undefined
+    backgroundColor: undefined
   },
   bottom_right: {
     flex: 1,
     justifyContent: 'center',
     marginRight: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined
+    backgroundColor: undefined
   },
   /* Common */
   bold: {

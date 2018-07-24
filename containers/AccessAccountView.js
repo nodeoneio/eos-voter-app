@@ -30,10 +30,6 @@ import * as ValidateActions from '../actions/validate'
 
 import * as Api from '../api/ApiDelegate'
 
-
-
-process.env.NODE_ENV = 'production'
-
 var {height, width} = Dimensions.get('window');
 
 class AccessAccount extends React.Component {
@@ -262,17 +258,17 @@ const styles = StyleSheet.create({
   top: {
     height: 42,
     marginTop: 15,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : 'white',
+    backgroundColor: 'white',
     flexDirection: 'row'
   },
   body: {
     flex: 1,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined,
+    backgroundColor: undefined,
     paddingBottom: 40
   },
   bottom: {
     height: 42,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
     flexDirection: 'row'
   },
   input_area: {
@@ -291,11 +287,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginRight: 16,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
   },
   header: {
     height: 84,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'grey' : undefined
+    backgroundColor: undefined
   },
   content: {
     flex: 1,
@@ -317,13 +313,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     marginLeft: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : undefined
+    backgroundColor: undefined
   },
   bottom_right: {
     flex: 1,
     justifyContent: 'center',
     marginRight: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined
+    backgroundColor: undefined
   },
   /* Common */
   bold: {

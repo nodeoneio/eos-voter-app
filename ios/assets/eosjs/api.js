@@ -41,7 +41,7 @@ function getAccount(requestId, config, account) {
   });
 }
 
-function delegatebw(requestId, config, delegater, receiver, netAmount, cpuAmount) {
+function delegatebw(requestId, config, sign, delegater, receiver, netAmount, cpuAmount) {
   Eos(config).transaction(tr => {
     tr.delegatebw(delegatebwParams(
       delegater,
@@ -49,21 +49,25 @@ function delegatebw(requestId, config, delegater, receiver, netAmount, cpuAmount
       netAmount,
       cpuAmount
     ));
-  }, (error, result) => {
-    window.webViewBridge.send('handleDelegatebw', {error, result, requestId});
+  }, sign).then((result) => {
+    window.webViewBridge.send('handleDelegatebw', {result, requestId});
+  }).catch((error) => {
+    window.webViewBridge.send('handleDelegatebw', {error, requestId});
   });
 }
 
-function undelegatebw(requestId, config, delegater, receiver, netAmount, cpuAmount) {
+function undelegatebw(requestId, config, sign, delegater, receiver, netAmount, cpuAmount) {
   Eos(config).transaction(tr => {
-    tr.undelegatebw(delegatebwParams(
+    tr.undelegatebw(undelegatebwParams(
       delegater,
       receiver,
       netAmount,
       cpuAmount
     ));
-  }, (error, result) => {
-    window.webViewBridge.send('handleUndelegatebw', {error, result, requestId});
+  }, sign).then((result) => {
+    window.webViewBridge.send('handleUndelegatebw', {result, requestId});
+  }).catch((error) => {
+    window.webViewBridge.send('handleUndelegatebw', {error, requestId});
   });
 }
 
@@ -98,6 +102,24 @@ function getTableRows(requestId, config, query) {
 function getCurrencyStats(requestId, config, account, symbol) {
   Eos(config).getCurrencyStats(account, symbol, (error, result) => {
     window.webViewBridge.send('handleGetCurrencyStates', {error, result, requestId});
+  });
+}
+
+function getActions(requestId, config, account) {
+  Eos(config).getActions(account, (error, result) => {
+    window.webViewBridge.send('handleGetActions', {error, result, requestId});
+  });
+}
+
+function getCurrencyBalance(requestId, config, contract, account, symbol) {
+  Eos(config).getCurrencyBalance(contract, account, symbol, (error, result) => {
+    window.webViewBridge.send('handleGetCurrencyBalance', {error, result, requestId});
+  });
+}
+
+function refund(requestId, config, owner) {
+  Eos(config).refund({owner}, (error, result) => {
+    window.webViewBridge.send('handleRefund', {error, result, requestId});
   });
 }
 

@@ -21,7 +21,7 @@ import { SafeAreaView } from 'react-navigation'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
 
-process.env.NODE_ENV = 'production'
+
 
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906'
 
@@ -300,16 +300,16 @@ const styles = StyleSheet.create({
   top: {
     height: 42,
     marginTop: 15,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : 'white',
+    backgroundColor: 'white',
     flexDirection: 'row'
   },
   body: {
     flex: 1,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined
+    backgroundColor: undefined
   },
   bottom: {
     height: 42,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
     flexDirection: 'row'
   },
   indicator_overlay: {
@@ -357,11 +357,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginRight: 16,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'orange' : undefined,
+    backgroundColor: undefined,
   },
   header: {
     height: 84,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'grey' : undefined
+    backgroundColor: undefined
   },
   content: {
     paddingLeft: 20,
@@ -394,13 +394,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
     marginLeft: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'red' : undefined
+    backgroundColor: undefined
   },
   bottom_right: {
     flex: 1,
     justifyContent: 'center',
     marginRight: 20,
-    backgroundColor: process.env.NODE_ENV == 'development' ? 'blue' : undefined
+    backgroundColor: undefined
   },
   /* Common */
   header_title: {

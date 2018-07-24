@@ -53,7 +53,17 @@ export function unlockWallet(wallet, password) {
       type: types.VALIDATE_WALLET_PASSWORD_PENDING
     });
     const { connection, api } = getState();
-    const key = decrypt(wallet.data, password).toString(CryptoJS.enc.Utf8);
+    console.log(wallet, password, 'Unlock')
+    var key
+    try {
+      key = decrypt(wallet.data, password).toString(CryptoJS.enc.Utf8);
+    } catch (e) {
+      return dispatch({
+        type: types.VALIDATE_WALLET_PASSWORD_FAILURE
+      });
+    }
+
+    console.log(key, 'DESCRYPTED KEY')
     api.request(connection, Api.IS_VALID_PRIVATE, {key: key})
     .then((valid) => {
       if (valid === true) {
